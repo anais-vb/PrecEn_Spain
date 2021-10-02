@@ -1,0 +1,566 @@
+---
+title: "Anexo 2"
+subtitle: "Proceso de análisis de la encuesta de Fundación Secretariado Gitano realizado con R"
+output:
+  word_document: 
+    reference_docx: template_markdown.docx
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r include=FALSE}
+#install.packages(c("dslabs", "tidyverse", "ggpubr", "tibble", "fastDummies", "tidyr", "forcats", "gtools", "plyr", "knitr"))
+#install.packages(c("foreign", "ggmosaic", "flextable", "officer", "naniar", "janitor", "pander", "vcd"))
+```
+
+
+```{r load-packages, include=FALSE}
+library(dslabs)
+library(ggpubr)
+library(tibble)
+library(tidyr)
+library(forcats)
+library(gtools)
+library(plyr)
+library(foreign)
+library(readr)
+library(foreign)
+library(dslabs) 
+library(tidyverse) # Paquete básico para tidy data 
+library(reprex) # Crear ejemplos reproducibles de errores
+library(fastDummies) # Recodificación en dummies 
+library(ggplot2) # Gráficos 
+library(ggmosaic) # Gráficos de mosaico, complemento de ggplot
+library(knitr) # Markdown funcionalidades 
+library(flextable) # Paquete para diseñar tablas transformables a word con RMarkdown 
+library(officer) # Complemento de flextable
+library(naniar) # Funciones para transformar valores en Nas
+library(janitor) # Función tabyl
+library(pander) # Tablas simples en formato Markdown word output 
+library(vcd) # Visualización datos categóricos y medidas de asociación 
+```
+
+
+# Introducción 
+El análisis que se presenta en este anexo parte de los datos de la Encuesta realizada para el informe "Estudio comparado sobre la situación de la población gitana en España en relación al empleo y la pobreza 2018". Madrid." (Fundación Secretariado Gitano, 2019). La Encuesta utiliza un tamaño muestral de 1.500 personas, lo que  permite inferir resultadoscon un margen de error del +2,5%. En este anexo no entraremos en las especificidades metodológicas de diseño de encuesta, dado que para esta información nos remitimos al capítulo metodológico del mencionado informe. 
+
+Sólo destacaremos algunos aspectos por los cuales hemos optado por utilizar los microdatos de esta encuesta para la consecución de los objetivos de investigación. 
+
+El **objetivo inicial de la encuesta** es cuantificar y analizar la situación socio-laboral del pueblo gitano en el estado español. La encuesta reúne indicadores extraídos de la Encuesta de Población Activa (EPA) con el objetivo de poder comparar la muestra con el conjunto de la población.
+
+La justificación para la elección de la base de datos de la encuesta de la Fundación Secretariado Gitano puede sintetizarse en los siguientes motivos. En primer lugar, a partir de la fase inicial de investigación, se detectó que una parte muy significativa de la población implicada en los casos parte del análisis cualitativo pertenecían al pueblo gitano. Ante esta particularidad, se puso en evidencia la necesidad de realizar una aproximación cuantitativa específica hacia este colectivo que ha sido posible gracias al acceso a los microdatos resultado de esta encuesta. En segundo lugar, la posibilidad de profundizar el análisis cuantitativo en relación a la situación de precariedad energética de un colectivo minorizado, nos permite construir conocimiento y metodologías concretas que puedan ser aplicables a otros contextos. 
+
+## Limitaciones del análisis cuantitativo 
+Entre las limitaciones del presente análisis cabe mencionar las siguientes. A diferencia del análisis realizado sobre la encuesta EINSFOESSA (análisis detallado en el Anexo 1) la encuesta de la Fundación Secretariado Gitano no incluye las variables necesarias para un análisis completo de los indicadores de pobreza y vulnerabilidad energética oficiales utilizados por el gobierno español. Por este motivo, el análisis que se presenta sólo puede tener un alcance parcial, limitado a los indicadores consensuales de autopercepción de temperatura adecuada en los hogares y existencia de retrasos en el pago de facturas de suministros básicos. 
+
+
+# Preparación de los datos a partir de la encuesta
+En primer lugar, importaremos la base de datos que utilizaremos en el marco de nuestro análisis: 
+
+```{r include=FALSE}
+getwd() #Comprobamos el directorio de trabajo para localizar los datos que utilizaremos en nuestro análisis
+
+pobgit <- read.spss("./dades/pobgit.sav", to.data.frame=TRUE)
+
+View(pobgit)
+```
+
+En segundo lugar, debemos explorar las variables de la base de datos utilizada: 
+
+```{r include=FALSE}
+names(pobgit) #Nos indica el nombre de las variables incluídas en los microdatos de la base de datos 
+
+str(pobgit) #Nos indica las variables y su tipo - útil para detectar aquellas variables que deban ser transformadas en factores (variables categóricas que utilizan números para indicar categorías)
+
+dim(pobgit) # Nos dice el número de filas/observaciones (1492) y las variables (317)
+
+```
+
+Una vez se ha estudiado la estructura de la base de datos, debemos transformar las variables en factores (categóricas) o en números (numéricas) y explorar los niveles factoriales de las mismas. Cómo vemos, hay 317 variables pero no es estrictamente cierto ya que muchas de ellas son categorias de variables existentes separadas como variables categóricas con opción sí/no, o 1-0. Para que el software R no entienda que esos 1 y 0 son números, sino categorías, deben transformarse en factores. 
+
+Ahora bien, no podemos optar por una transformación masiva de todas las variables ya que pueden haber diversas de ellas que sean númericas. Para ello, como primer paso del análisis deberemos identificarlas. 
+
+Primero convertiremos todas las variables de "character" a factores, posteriormente detectaremos cuales eran númericas y deben reconvertirse. Para ello, hemos creado una función propia que nos permita convertir los datos factoriales mixtos detectados a datos numéricos. 
+
+```{r}
+# Creamos una tabla 'tibble' para facilitar la manipulación de los datos 
+pobgit2 <- as.tibble (pobgit)
+
+print(pobgit2)
+
+# Creamos una función de limpieza de datos factoriales mixtos a numéricos 
+
+limp_factor_mixto <- function(X){
+  var_num <- as.character(X)
+  pobgit2 %>% mutate(var_num = case_when(var_num %in% c("No", "NS", "NC") ~ "0", 
+                                          TRUE ~ var_num))
+  var_num <- as.numeric(var_num)
+  var_num[is.na(var_num)] <- 0
+  return(var_num)
+}
+```
+
+Una vez hemos creado la función de limpieza de datos, procederemos a aplicarla al conjunto de datos detectados como problemáticos. para hacerlo, dividiremos el conjunto de datos en dimensiones de interés para nuestro análisis que se refieren a características socioeconómicas de la muestra que nos proporcionaran información valiosa. A continuación, mostramos el proceso de análisis de datos para cada una de las dimensiones seleccionadas. 
+
+## Variables y datos referentes a ingresos del hogar
+
+La primera dimensión se refiere a todas las variables y datos disponibles a ingresos del hogar. El primer paso será aplicar la función de limpieza de datos a todos aquellos datos que hemos detectado como problemáticas en el análisis preliminar: 
+
+```{r include=FALSE}
+
+#Limpiamos la variable A9 que se refiere a los ingresos totales de un hogar 
+pobgit2$A9_num <- limp_factor_mixto(pobgit2$A9)
+
+#Limpiamos el conjunto de variables A8 que se refieren a los ingresos del hogar 
+
+    #A8_1: Salarios 
+    pobgit2$A8_1_num <- limp_factor_mixto(pobgit2$A8_1)
+    print (pobgit2$A8_1_num)
+    
+    #A8_2: Pensiones 
+    pobgit2$A8_2_num <- limp_factor_mixto(pobgit2$A8_2)
+    print(pobgit2$A8_2_num)
+    
+    #A8_3: Desempleo 
+    pobgit2$A8_3_num <- limp_factor_mixto(pobgit2$A8_3)
+    
+    #A8_4: Ayudas 1
+    pobgit2$A8_4_num <- limp_factor_mixto(pobgit2$A8_4)
+    
+    #A8_5: Ayudas 2
+    pobgit2$A8_5_num <- limp_factor_mixto(pobgit2$A8_5)
+    
+    #A8_6: Transferencias 
+    pobgit2$A8_6_num <- limp_factor_mixto(pobgit2$A8_6)
+    
+    #A8_7 Otros Ingresos 
+    pobgit2$A8_7_num <- limp_factor_mixto(pobgit2$A8_7)
+    
+```
+
+A continuación, realizaremos las operaciones de tratamiento de datos necesarias para obtener una variable que nos indique los ingresos totales del hogar, a partir de los datos parciales sobre ingresos de la base de datos: 
+
+```{r}
+# Resumen de la variable numérica creada sobre ingresos mensuales en el hogar 
+str(pobgit2$A9_num)
+
+# Creamos una función para calcular los ingresos totales del hogar de acuerdo con los ingresos por conceptos y totales 
+
+pobgit2 <- pobgit2 %>% mutate (ing_hogar_conc = select(., A8_1_num:A8_7_num) %>% replace(is.na(.), 0) %>% rowSums())
+
+summary(pobgit2$ing_hogar_conc)
+```
+
+Creamos una fórmula con un doble objetivo: 
+(1) detectar qué importe entre los ingresos totales o por conceptos es más alto y seleccionarlo, y 
+(2) detectar si en la variable A9 no constan ingresos, y en ese caso, acudir a las variables anteriores aunque sean más bajos
+
+```{r}
+pobgit2$ing_hogar_total <- ifelse(pobgit2$ing_hogar_conc > pobgit2$A9_num, pobgit2$ing_hogar_conc, pobgit2$A9_num)
+
+
+pobgit2 %>%  select(A9_num, ing_hogar_conc, ing_hogar_total) %>% print() # Comprobamos que el resultado final es aquel que esperamos comparando los datos de la variable A9, la variable creada de ingresos por conceptos, y finalmente nuestra nueva variable del total de ingresos del hogar
+
+```
+### Cálculo de la renta equivalente por unidad de consumo 
+Con el objetivo de obtener datos comparables, nuestro objetivo será obtener datos a nivel de población. Esta tarea presenta cierta dificultad, en tanto la base de datos utiliza la unidad familiar como unidad de análisis. Para facilitar la conversión y comparabilidad de los datos hemos optado por calcular el ingreso equivalente de todos los miembros de la unidad familiar. 
+
+El primer paso para realizar este cálculo será calcular los ingresos de la unidad familiar utilizando como referencia la escala de equivalencia "OCDE Modificada". Esta escala de equivalencia nos permite asignar un valor, de forma ponderada, a cada miembro de la unidad familiar en función de la edad del mismo. De esta manera, al calcular los ingresos del hogar pueden tenerse en cuenta aspectos como las economías de escala en el consumo y el crecimiento no lineal de necesidades de consumo en unidades familiares de distintas dimensiones y características. 
+
+Así, el primer paso será calcular el taño equivalente del hogar a partir de las variables de A1_04 a A7_04, utilizando la siguiente escala de valores: 
+- Primer adulto = 1
+- Segundo adulto y siguientes = 0.5 
+- Niños y niñas menores de 14 años = 0.3
+
+```{r}
+#Creamos la función para calcular el peso equivalente en la escala OECD de cada variable 
+
+peso_variable_oecd <- function(x){
+  y <- ifelse(x >= 16, "0.5", ifelse(x < 16, "0.3", "0"))
+  y <- as.numeric(y)
+}
+
+#Calculaamos el peso de cada miembro de la unidad familiar en cada caso 
+pobgit2$A1_04_oecd <- peso_variable_oecd(pobgit2$A1_04_num)
+pobgit2$A2_04_oecd <- peso_variable_oecd(pobgit2$A2_04_num)
+pobgit2$A3_04_oecd <- peso_variable_oecd(pobgit2$A3_04_num)
+pobgit2$A4_04_oecd <- peso_variable_oecd(pobgit2$A4_04_num)
+pobgit2$A5_04_oecd <- peso_variable_oecd(pobgit2$A5_04_num)
+pobgit2$A6_04_oecd <- peso_variable_oecd(pobgit2$A6_04_num)
+pobgit2$A7_04_oecd <- peso_variable_oecd(pobgit2$A7_04_num)
+pobgit2$A8_04_oecd <- peso_variable_oecd(pobgit2$A8_04_num)
+pobgit2$A9_04_oecd <- peso_variable_oecd(pobgit2$A9_04_num)
+pobgit2$A10_04_oecd <- peso_variable_oecd(pobgit2$A10_04_num)
+
+#Sumamos los pesos de cada hogar (fila/observación)
+pobgit2 <- pobgit2 %>% mutate(hogar_oecd = select(., A1_04_oecd:A10_04_oecd) %>% replace(is.na(.), 0) %>% rowSums())
+pobgit2$hogar_oecd <- pobgit2$hogar_oecd + 1
+
+#Dividimos los ingresos totales del hogar por el tamaño equivalente del hogar
+pobgit2$ing_equivalente <- pobgit2$ing_hogar_total/pobgit2$hogar_oecd
+
+summary(pobgit2$ing_equivalente) # A través de la nueva variable 'ing_equivalente' obtenemos los ingresos equivalentes de cada hogar
+
+```
+
+Finalmente, crearemos una última variable relativa a ingresos en qué obtendremos los quintiles de la variable de ingresos equivalentes. Esta nueva variable nos será útil para comparar datos entre la muestra de población perteneciente al pueblo gitano y los datos disponibles de población general. 
+
+```{r message=FALSE, warning=FALSE}
+# Calcular quintiles de ingresos equivalentes 
+pobgit2$quintiles_ingresos <- quantcut(pobgit2$ing_equivalente, q=5, na.rm=TRUE)
+levels(pobgit2$quintiles_ingresos)
+
+pobgit2$quintiles_ingresos <- revalue(pobgit2$quintiles_ingresos, c("[0,167]"= "Quintil 1",  "(167,281]" = "Quintil 2", "(281,400]" = "Quintil 3", "(400,560]" = "Quintil 4", "(560,2.28e+03]" = "Quintil 5"))
+
+summary(pobgit2$quintiles_ingresos)
+```
+
+
+## Variables y datos referentes a la edad
+En primer lugar, crearemos una función propia de limpieza para los datos disponibles sobre la edad de los miembros de la unidad familiar. En este caso, nuestro objetivo será mantener los datos perdidos (NA) en aras de diferenciar el tamaño de cada unas de las unidades familiares incluídas en la base de datos. 
+
+```{r}
+#Creamos función para limpiar las variables sobre edad, en las que queremos que se mantengan las NA
+
+limp_factor_mixto2 <- function(X){
+  var_z <- as.character(X)
+  pobgit2 %>% mutate(var_z = case_when(var_z %in% c("No", "NS", "NC") ~ "0", 
+                                         TRUE ~ var_z))
+  var_z <- as.numeric(var_z)
+  #var_z[is.na(var_z)] <- 0
+  return(var_z)
+}
+
+#Limpiar las variables referentes a la edad  
+pobgit2$A1_04_num <- limp_factor_mixto2(pobgit2$A1_04)
+pobgit2$A2_04_num <- limp_factor_mixto2(pobgit2$A2_04)
+pobgit2$A3_04_num <- limp_factor_mixto2(pobgit2$A3_04)
+pobgit2$A4_04_num <- limp_factor_mixto2(pobgit2$A4_04)
+pobgit2$A5_04_num <- limp_factor_mixto2(pobgit2$A5_04)
+pobgit2$A6_04_num <- limp_factor_mixto2(pobgit2$A6_04)
+pobgit2$A7_04_num <- limp_factor_mixto2(pobgit2$A7_04)
+pobgit2$A8_04_num <- limp_factor_mixto2(pobgit2$A8_04)
+pobgit2$A9_04_num <- limp_factor_mixto2(pobgit2$A9_04)
+pobgit2$A10_04_num <- limp_factor_mixto2(pobgit2$A10_04)
+
+str(pobgit2$A1_04_num) #Comprobamos una de las variables numéricas creadas 
+```
+# Herramientas metodológicas: funciones propias y preparación de código por defecto 
+
+En este apartado se definen las herramientas de estadística descriptiva básica que nos servirán para el análisis de datos posterior. Para ellos hemos creado funciones propias para la creación y construcción de tablas de frecuencia, tablas de contingencia y visualización gráfica de datos. 
+
+## Construcción de tablas de frecuencia para una variable (descriptiva univariante)
+
+En primer lugar, definimos la función que se utilizará para la creación de tablas de frecuencia de los indicadores de pobreza energética (tablas de frecuencia para una sola variable) y que se utilizarán a lo largo de la tesis: 
+
+```{r}
+#Función para crear tablas de indicadores (una variable)
+
+tabla_indicador <- function(x,t){
+    
+  # Creamos tabla y convertimos a objeto flextable 
+    z <- tabyl(x, show_na = FALSE) 
+    z <- qflextable(z)
+    
+    # Definimos las propiedades generales de la tabla 
+    set_table_properties(z, width = 1, layout = "autofit")
+    
+    # Definimos y creamos objetos de texto con formato 
+    # Formato general
+    def_par <- fp_par(text.align = "center", padding = 5) 
+    # Formato texto 
+    def_text <- fp_text(font.size = 9, 
+                        italic = FALSE, 
+                        font.family = "Arial")
+    #Formato de la cabecera 
+    def_text_header <- fp_text(font.size = 10, 
+                               italic = FALSE, 
+                               font.family = "Arial",
+                               color="dodgerblue4",
+                               bold = TRUE)
+    # Creamos el título 
+     z <- add_header_lines(x = z, 
+                         values = t)
+
+    # Aplicamos los estilos de texto diseñados anteriormente 
+    z <- style(x = z, pr_p = def_par, pr_t = def_text, part = "all")  
+    z <- style(x = z, pr_t = def_text_header, part = "header")
+    z <- set_header_labels(x = z, 
+                           n = "Total", 
+                           percent = "Porcentaje")
+    z <- fontsize(z, i=2, size = 9, part = "header")
+    z <- bold(z, j =1, bold = TRUE, part = "body")
+    z <- color(z, j = 1, color= "dodgerblue4", part = "body")
+    
+    # Bordes 
+    z <- border_remove(z) # Primero eliminamos los bordes
+
+    big_border = fp_border(color ="dodgerblue4", 
+                           style = "dotted", 
+                           width = 2)
+    std_border = fp_border(color="dodgerblue4", # color
+                           style = "solid", # estilo 
+                           width = 1) #anchura borde
+    z <- hline(z, i =1, border = big_border, part = "header")
+    z <- hline(z, i =2, border = std_border, part = "header")
+    z <- hline_bottom(z, part="body", border = std_border )
+    
+    # Imprimimos la tabla
+    z
+}
+
+#tabla_indicador(x = pobgit2$temp_adecuada, #variable con marcador $ 
+#                t = "Temperatura adecuada") # Título de la tabla (nombre del indicador)
+
+```
+
+### Construcción de tablas de contingencia para dos o más variables (descriptiva multivariante)
+
+A continuación se define la función utilizada para la creación de tablas de contingencia presentadas en esta tesis doctoral. Crearemos una función propia para la creación de tablas de contingencia con los datos que iremos obteniendo. La creación de esta función facilita y simplifica la ejecución del código posterior.  
+
+```{r}
+
+crear_tabla <- function(var1,var2,title,varname,numcol){
+  # Creamos la tabla de frecuencias   
+  z <- proc_freq(foessa2,
+               row = var1, # Variable 1
+               col = var2, # Variable 2
+               include.row_percent = TRUE,
+               include.column_percent = TRUE,
+               include.table_percent = FALSE,
+               include.column_total = FALSE,
+               include.row_total = FALSE,
+               include.header_row = FALSE) 
+    
+  # Empezamos a definir las características de formato de la tabla 
+    set_table_properties(z, width = 1, layout = "autofit")
+  
+  # Creamos objetos específicos de definición de formato de texto   
+    def_par <- fp_par(text.align = "center", padding = 5)
+    def_text <- fp_text(font.size = 8, italic = FALSE, font.family = "Arial")
+    def_text_header <- fp_text(font.size = 8, italic = FALSE, bold = FALSE, font.family = "Arial", color="dodgerblue4", underlined = FALSE)
+
+  # Establecemos las cabeceras de la tabla
+    z <- set_header_labels(x = z, 
+                           label = "")
+    z <- add_header_row( x = z, 
+                         values = c(" ","Cálculo", varname),
+                         colwidths = c(1,1,numcol))
+    z <- add_header_lines(x = z, 
+                         values = title)
+  
+  # Aplicamos los diseños da toda la tabla 
+    z <- style(x = z, 
+               pr_p = def_par, 
+               pr_t = def_text, 
+               part = "all")  
+  # Aplicamos los diseños de texto a las cabeceras de la tabla de la tabla
+    z <- style(x = z, 
+               pr_t = def_text_header, 
+               part = "header")
+    z <- fontsize(z, i = 2, size = 8, part = "header")
+    z <- bold(z, i = 2, part = "header")
+    z <- fontsize(z, i = 1, size = 10, part = "header")
+    z <- bold(z, i = 1, part = "header")
+    #z <- bg(z, i = 2,bg = "aliceblue", part = "header")
+    z <- bg(z, i = 3,bg = "aliceblue", part = "header")
+  
+  # Modificamos características específicas del cuerpo de la tabla 
+    z <- bg(z, j = 1,bg = "dodgerblue4", part = "body")
+    z <- color(z, j=1, color = "white", part = "body")
+    z <- bold(z, j = 1, part = "body")
+    z <- italic(z, j = 2, part = "body")
+    
+   #Definimos los bordes de la tabla 
+    z <- border_remove(z) # Primero eliminamos los bordes
+
+    big_border = fp_border(color ="dodgerblue4", 
+                           style = "dotted", 
+                           width = 2)
+    std_border = fp_border(color="dodgerblue4", # color
+                           style = "solid", # estilo 
+                           width = 1) #anchura borde
+    z <- hline(z, i =1, border = big_border, part = "header")
+    z <- hline(z, i =2, border = std_border, part = "header")
+    z <- hline_bottom(z, part="header", border = std_border )
+    z <- hline(z, i =3, border = std_border, part = "body")
+    z <- hline(z, i =6, border = std_border, part = "body")
+    z <- hline_bottom(z, part="body", border = std_border )
+    
+  # Refinamos los ajustes y los espaciados de la tabla y cabecera 
+    z <- line_spacing(z, i =2, space = 0.7, part = "header")
+    z <- padding(z, i =3, padding = 2, part = "header")
+
+  # Imprimimos la tabla 
+    z
+}
+
+
+
+
+#crear_tabla(var1 ="PE", #variable dependiente
+#            var2 ="discapacidad", # variable independiente
+#            title = "Pobreza energética y discapacidad", # título de la tabla 
+#            varname = "Tiene discapacidad reconocida", # Variable independiente
+#            numcol = 2) # Número de valores de la variable independiente 
+
+```
+
+### Graficación de tablas de contingencia para dos o más variables (descriptiva multivariante)
+
+También definiremos una función propia para el diseño de gráficos de barra con el objetivo de representar las tablas de contingencia más relevantes que creemos a lo largo de esta sección cuantitativa de la tesis: 
+
+```{r}
+crear_grafico <- function(x,y,title,xtitle){
+  df <- foessa2 %>% 
+    drop_na({{x}}) %>%
+    group_by({{y}},{{x}}) %>% 
+    tally() %>% 
+    complete({{x}}, fill = list(n = 0)) %>% 
+    mutate(percentage = n / sum(n) * 100)
+  
+  ggplot(df, aes({{x}}, percentage, fill = {{y}})) + 
+    geom_bar(stat = 'identity', position = 'dodge') +
+    scale_y_continuous("Porcentaje de población", expand = c(0,0))+ 
+    scale_x_discrete(xtitle)+ 
+    scale_fill_manual("Vulnerabilidad energética", values = c("#15607a",      
+                                                       "#18a1cd",
+                                                       "cyan")) +
+    ggtitle(title) +
+    theme_classic(base_size=10) + 
+    theme(plot.title = element_text(face = "bold", 
+                                    size = 10, 
+                                    color = "#00344c", 
+                                    vjust = 3, 
+                                    hjust = 0.5),
+          axis.text.x = element_text(#angle = 30, 
+                                     hjust = 0.5, 
+                                     vjust = 2, 
+                                     colour = "#00344c", 
+                                     size = rel(0.9)),
+          axis.title.x = element_text(face = "bold", 
+                                      size = 9),
+          axis.title.y = element_text(face = "bold", 
+                                      size = 9, 
+                                      vjust = 3),
+          axis.text.y = element_text(size=8, 
+                                     hjust = 0),
+          axis.line = element_blank(),
+          axis.ticks.x = element_blank(), 
+          legend.title = element_text(colour = "#00344c", size = 8, face = "bold")) 
+  
+}
+
+#crear_grafico(x = anciano, #variable independiente
+#              y = PE,  # variable dependiente 
+#              title = "Pobreza energética y personas mayores", # título del gráfico
+#              xtitle = "Hogares con un miembro de más de 65 años") # título axis X 
+
+
+```
+
+
+
+# Indicadores primarios de pobreza y vulnerabilidad energética 
+En este apartado calcularemos los principales indicadores primarios de pobreza y vulnerabilidad energética a partir de los datos disponibles. Cómo hemos mencionado anteriormente, los microdatos de la encuesta desarrollada por la Fundación Secretariado Gitano sólo nos permite construir dos de los cuatro indicadores oficiales de pobreza energética, de tipo consensual: la autopercepción de temperatura inadecuada en el hogar y el retraso en el pago de facturas de suministros básicos. 
+
+## Indicador consensual: temperatura adecuada en el hogar 
+
+El primer indicador analizado es el indicador consensual de **Temperatura adecuada en el hogar**. Este indicador se construye a partir de la variable `P51_3` de la encuesta, que se extrae de la pregunta:
+
+> Dígame, por favor, si su hogar puede permitirse: (...) 51.3. Mantener la vivienda con una
+temperatura adecuada
+
+A partir de dicha pregunta, obtenemos datos que nos permiten construir el indicador de temperatura adecuada en el hogar tanto a nivel de hogares como a nivel poblacional. En primer lugar, debemos tener en cuenta que la encuesta con la que trabajamos considera cada observación como un hogar. Es decir, la unidad de análisis de la encuesta es la unidad familiar. Con el objetivo de poder traducir esta información en datos poblaciones, que nos permitan su comparabilidad, hemos optado por el método utilizado por el Observatorio Europeo de Pobreza Energética (EPOV). 
+
+De acuerdo con la guía metodológica de EPOV, para calcular los datos poblacionales a partir de datos basados en hogares, se atribuirá el valor de la variable en cuestión a cada uno de los miembros del hogar, operación que nos permite calcular el indicador a nivel poblacional. 
+
+```{r}
+summary(pobgit2$P51_3) #vemos que la variable de temperatura adecuada se distribuye por hogares (cada observación es un hogar)
+
+str(pobgit2$P50) #vemos que esta variable es de tipo factorial y nos indica el tamaño del hogar (número de miembros)
+
+#Creamos una nueva variable que incluya el tamaño del hogar (miembros) en formato numérico
+pobgit2$P50_num <- as.numeric(as.character(pobgit2$P50)) 
+
+
+summary(pobgit2$P50_num)#Resumen numérico del tamaño de los hogares de la muestra 
+
+#Convertimos la variable factorial de temperatura adecuada en el hogar a variable dummy o binaria para poder realizar análisis estadísticos 
+class(pobgit2$P51_3)
+
+#Creación de variables dummies para la variable de temperatura adecuada en el hogar 
+pobgit2 <- dummy_cols(
+  pobgit2,
+  select_columns = 'P51_3',
+  remove_first_dummy = TRUE,
+  remove_most_frequent_dummy = FALSE,
+  ignore_na = TRUE,
+  split = NULL,
+  remove_selected_columns = FALSE
+)
+
+head(pobgit2$P51_3)
+str(pobgit2$P51_3_No) # Esta variable binaria otorga un valor de 1 a las observaciones que indican que no pueden permitirse mantener su hogar a una temperatura adecuada 
+
+sum(pobgit2$P51_3_No)
+
+```
+A partir de esta primera operación, podemos ver que 452 hogares de la muestra no pueden permitirse mantener su hogar a una temperatura adecuada. 
+
+
+
+
+
+
+```{r}
+
+#Numero de hogares sin una temperatura adecuada 
+hogares_temp <- sum(pobgit2$P51_3_No)
+hogares_temp # 452 hogares sin temperatura adecuada 
+
+#Porcentaje de hogares sin una temperatura adecuada - quitamos los valores perdidos de la muestra  (4)
+anyNA(pobgit2$P51_3) #No hay valores perdidos de tipo NA
+sum(pobgit2$'P51_3_NS/NC') # Hay 4 valores perdidos de NS/NC - 0.26% valores perdidos 
+porcentaje_hogares_temp <- (hogares_temp/(nrow(pobgit2)-sum(pobgit2$`P51_3_NS/NC`)))*100
+porcentaje_hogares_temp # 30.37% de los hogares no tienen una temperatura adecuada 
+
+#Indicador de PE - Temperatura adecuada por población 
+temp_df <- pobgit2 %>% filter(P51_3 == "No")
+poblacion_temp <- sum(temp_df$P50_num)
+poblacion_temp # 1801 personas con una temperatura inadecuada en el hogar 
+poblacion_total <- sum(pobgit2$P50_num)
+
+pe_indicador_temp <- poblacion_temp/poblacion_total*100
+pe_indicador_temp # El 29.941% de la población no puede mantener una temperatura adecuada en el hogar 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

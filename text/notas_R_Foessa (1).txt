@@ -1,0 +1,28 @@
+NOTAS PARA LA ENCUESTA DE EINSFOESSA
+
+*Si miramos la estructura de la tabla: 
+Rows: 29,953 - esto ya es la población (no hogares) - No hace falta crear una tabla de población! 
+Columns: 45 - selección de variables de trabajo 
+
+
+# Código para crear tablas 
+dft_densidad <- filter(pobgit_poblacion, P51_3 != "NS/NC") 
+dft_densidad$P51_3 <- fct_drop(dft_densidad$P51_3) # Pairwise method para eliminar missing values 
+
+summary(dft_densidad$P51_3)
+
+table_temp_densidad_pob <- prop.table(table(dft_densidad$P51_3, dft_densidad$TAMANO), 2)*100
+write.table(table_temp_densidad_pob, file= "table_temp_densidad_pob.csv", sep=",")
+
+INDICADORES PRIMARIOS BASADOS EN EL GASTO 
+
+2M
+1. Calculation of the share of (equivalised) energy expenditure in (equivalised) disposable income for each observation (household) in the dataset
+2. Calculation of the (weighted) median value of this variable by country
+3. Generation of a new variable that assigns households whose value on this variable is above twice the national median the value 1 (i.e. energy poor) and all other the value 0 (i.e. not energy poor)
+4. Calculation of the share of households considered energy poor by country
+
+M/2:
+1. Calculation of the (weighted) median (equivalised) energy expenditure by country
+2. Generation of a new variable that assigns households whose (equivalised) energy expenditure is below half the national median the value 1 (i.e. energy poor) and all other the value 0 (i.e. not energy poor)
+3. Calculation of the share of households considered energy poor by country

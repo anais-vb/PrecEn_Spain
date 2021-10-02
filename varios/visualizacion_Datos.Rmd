@@ -1,0 +1,74 @@
+---
+title: "Visualización GGPLOT"
+author: "Anais Varo"
+date: "15/04/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Visualización de datos 
+
+7 Capas: data -> aes -> geom -> facets -> stats -> corodinates --> themes 
+Como minimo necesita tres capas: data, aes y geom 
+
+**1. Los datos**
+La primera capa son los datos, y si usamos la primera capa ya nos genera un gráfico: 
+
+```{r}
+ggplot(data=iris)
+```
+Será base de datos de donde salen los datos. 
+
+**2. Aesthetics**
+Definimos las variables
+
+```{r}
+ggplot((data=iris), 
+       aes((x=Sepal.Length), 
+           (y= Sepal.Width)))
+```
+Dentro de aes, normalmente encontramos:
+* x
+* y 
+* colour - colores de agrupación o el borde
+* fill - color de relleno 
+* size - tamaño 
+* alpha - transparencia 
+* linetype -tipo de línea 
+* labels - etiquetas de datos 
+* shape - forma de símbolo 
+
+
+
+**3. Geometria**
+Como se van a representar los datos 
+
+```{r}
+ggplot((data=iris), # data
+       aes((x=Sepal.Length), 
+           (y= Sepal.Width)))+ #aes
+  geom_point() #geom 
+```
+
+[Cheatsheet de ggplot](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf) 
+
+Cómo saber qué gráfico usar?
+1. Buscar en Google imagen el estadístico que queremos usar 
+2. Usar la [Galeria de gráficos](www.r-graph-gallery.com) 
+
+Además hay extensiones de ggplot. 
+
+**3. Facets:** Agrupar los datos 
+**4. Statistics:** Aquí aplicamos las formulas que deben graficarse. Ej. stat_smooth(), stat_summary()... 
+**5. Coordinates:** Solo hacen referencia a los ejes (log, etc.)- te permite setear los ejes de tu gráfico y expandir los límites o adaptarlos. 
+**6. Themes:** El tema es el fondo que viene en ggplot. Hay diversos paquetes, algunos integrados u otros se pueden encontrar. 
+
+## Paletas de colores 
+A tener en cuenta el tema de paletas de colores. 
+
+names(foessa2)
+
+

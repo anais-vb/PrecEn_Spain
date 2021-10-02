@@ -1,0 +1,61 @@
+(
+    P5 == "Es su cónyuge/pareja", ifelse(
+      pobgit2$A1_02 == "Cónyuge o pareja", A1_06, ifelse(
+       pobgit2$A2_02 == "Cónyuge o pareja", A2_06, ifelse(
+       pobgit2$A3_02 == "Cónyuge o pareja", A3_06, ifelse(
+          pobgit2$A4_02 == "Cónyuge o pareja", A4_06, ifelse(
+            pobgit2$A5_02 == "Cónyuge o pareja", A5_06, ifelse(
+             pobgit2$A6_02 == "Cónyuge o pareja", A6_06, ifelse(
+                pobgit2$A7_02 == "Cónyuge o pareja", A7_06, ifelse(
+                  pobgit2$A8_02 == "Cónyuge o pareja", A8_06, ifelse(
+                    pobgit2$A9_02 == "Cónyuge o pareja", A9_06, ifelse(
+                      pobgit2$A10_02 == "Cónyuge o pareja", A10_06, ifelse(
+                        P5 == "Es su padre/madre", ifelse(
+                          pobgit2$A1_02 == "Es su padre/madre", A1_06, ifelse(
+                            pobgit2$A2_02 == "Es su padre/madre", A2_06, ifelse(
+                              pobgit2$A3_02 == "Es su padre/madre", A3_06, ifelse(
+                                pobgit2$A4_02 == "Es su padre/madre", A4_06, ifelse(
+                                  pobgit2$A5_02 == "Es su padre/madre", A5_06, ifelse(
+                                    pobgit2$A6_02 == "Es su padre/madre", A6_06, ifelse(
+                                      pobgit2$A7_02 == "Es su padre/madre", A7_06, ifelse(
+                                        pobgit2$A8_02 == "Es su padre/madre", A8_06, ifelse(
+                                          pobgit2$A9_02 == "Es su padre/madre", A9_06, ifelse(
+                                            pobgit2$A10_02 == "Es su padre/madre", A10_06, "NO"
+                      ))))))))),"NO")))))))))))))))
+
+
+pobgit3 <- pobgit2 %>% filter(actp_yo == "No Principal") %>% mutate (actp_conyugue = ifelse (P5 == "Es su cónyuge/pareja", ifelse(
+  A1_02 == "Cónyuge o pareja", pobgit$A1_06, ifelse(
+    A2_02 == "Cónyuge o pareja", pobgit$A2_06, ifelse(
+      A3_02 == "Cónyuge o pareja", A3_06, ifelse(
+        A4_02 == "Cónyuge o pareja", A4_06, ifelse(
+          A5_02 == "Cónyuge o pareja", A5_06, ifelse(
+            A6_02 == "Cónyuge o pareja", A6_06, ifelse(
+              A7_02 == "Cónyuge o pareja", A7_06, ifelse(
+                A8_02 == "Cónyuge o pareja", A8_06, ifelse(
+                  A9_02 == "Cónyuge o pareja", A9_06, ifelse(
+                    A10_02 == "Cónyuge o pareja", A10_06, "Otro"))))))))))))
+
+
+pobgit4 <- pobgit3 %>% mutate(miembro_mayor = ifelse(P1 >= 65, "Sí", ifelse(
+  A1_04_num >= 65, "Sí", ifelse(
+    A2_04_num >= 65, "Sí",ifelse(
+      A3_04_num >= 65, "Sí",ifelse(
+        A4_04_num >= 65, "Sí",ifelse(
+          A5_04_num >= 65, "Sí",ifelse(
+            A6_04_num >= 65, "Sí",ifelse(
+              A7_04_num >= 65, "Sí",ifelse(
+                A8_04_num >= 65, "Sí",ifelse(
+                  A9_04_num >= 65, "Sí",ifelse(
+                    A10_04_num >= 65, "Sí","No"))))))))))))                             
+> 
+
+intento de automatizar... pero no funciona : 
+
+fun_pob <- function(x){
+    summarise (sum(x))
+}
+
+by(data = pobgit2, 
+   INDICES = c(pobgit2$TAMANO,pobgit2$P51_3), 
+   fun = fun_pob(P50_num))

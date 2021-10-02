@@ -1,0 +1,1778 @@
+---
+title: "Anexo 1"
+subtitle: "Proceso de análisis de la encuesta Einsfoessa realizado con R"
+output:
+  word_document: 
+    reference_docx: template_markdown.docx
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+```{r load-packages, include=FALSE}
+library(readr)
+library(foreign)
+library(dslabs) 
+library(tidyverse) # Paquete básico para tidy data 
+library(reprex) # Crear ejemplos reproducibles de errores
+library(fastDummies) # Recodificación en dummies 
+library(ggplot2) # Gráficos 
+library(ggmosaic) # Gráficos de mosaico, complemento de ggplot
+library(knitr) # Markdown funcionalidades 
+library(flextable) # Paquete para diseñar tablas transformables a word con RMarkdown 
+library(officer) # Complemento de flextable
+library(naniar) # Funciones para transformar valores en Nas
+library(janitor) # Función tabyl
+library(pander) # Tablas simples en formato Markdown word output 
+library(vcd) # Visualización datos categóricos y medidas de asociación 
+```
+
+# Introducción 
+
+La encuesta **EINSFOESSA** se realizó en 2017 por la Fundación FOESSA, publicando los resultados de la misma en el informe de 2019 **VIII Informe sobre Exclusión y Desarrollo Social en España (Fundación FOESSA)**. En este documento trabajaremos sobre los datos de esta encuesta para el análisis y caracterización de la población general y vulnerable en situación de Vulnerabilidad energética (de acuerdo con los indicadores oficiales). 
+
+Aquí no entraremos en las especificidades metodológicas de diseño de encuesta de EINSFOESSA, dado que para esta información nos remitimos al capítulo metodológico del VIII Informe. 
+
+Sólo destacaremos algunos aspectos por los cuales hemos optado por utilizar los microdatos de esta encuesta (y no las encuestas poblacionales oficiales, como la Encuesta de Condiciones de Vida o la Encuesta de Presupuestos Familiares) para la consecución de los objetivos de investigación. 
+
+El **objetivo inicial de la encuesta** es cuantificar y analizar las condiciones de vida y la exclusión social en España, a través de datos representativos a nivel nacional y a nivel de comunidades autónomas.
+
+La justificación para la elección de la base de datos de la encuesta de EINSFOESSA para la caracterización de la población española en situación de vulnerabilidad energética, es que la metodología usada por esta encuesta asegura la inclusión y representación de los hogares con exclusión social. Esta circunstancia nos es de utilidad para poder analizar la prevalencia, características y perfil de la población vulnerable en situación de precariedad energética. 
+
+Entre los motivos para el uso de esta base de datos para la caracterización de la población en situación de precariedad energética, apuntamos: 
+1. La Encuesta EINSFOESSA nos permite comparar los cuatro indicadores oficiales, adoptados por el gobierno español a través de la Estrategia Nacional Contra la Pobreza Energética, en una sola muestra. 
+2. La Encuesta EINSFOESSA, además, proporciona un amplio abanico de análisis y caracterización de esta población, permitiento un análisis de las condiciones sociales, demográficas y territoriales de la población en situación de vulnerabilidad energética. 
+3. El tipo de muestreo utilizado en la encuesta EINSFOESSA asegura la representatividad y presencia en la muestra de hogares en situación de vulnerabilidad que, a menudo, resultan infrarepresentados en las estadísticas oficiales, y en particular, en el caso de la vulnerabilidad y precariedad energética se documenta en los casos de pobreza energética escondida. 
+
+*Para el seguimiento del código mostrado en este anexo metodológico se ha creado un proyecto específico de R con los datos necesarios para la ejecución del código. En caso que no se utilize un proyecto de R, deberá modificarse el código debidamente para adaptar las referencias al directorio de trabajo que corresponda.*
+
+## Preparación de los datos a partir de los microdatos de la Encuesta EINSFOESSA 2018
+
+```{r include=FALSE, paged.print=FALSE}
+foessa2018 <- read.spss("./dades/foessa18.sav",to.data.frame=TRUE) # Cargaremos la base de datos de EINSFOESSA 
+
+```
+
+En primer lugar generamos una base de datos reducida en la que sólo tomamos las variables de interés en relación con nuestro objetivo de investigación. 
+
+```{r}
+foessa2 <- foessa2018 %>% select(CCAA = CCAA, 
+                                 PROVINCIA = PROVINCIA, 
+                                 tamano_hogar = PERSONAS, 
+                                 edad = A1, 
+                                 sexo = A2, 
+                                 educacion = B12, 
+                                 salud = C21, 
+                                 dependencia = C26, 
+                                 ingresos_UC = INGR_UC_FIABLE,
+                                 ingresos_hogar = INGR_SUMAFIABLE_HOGAR,
+                                 excl4grupos = excl4grupos, 
+                                 exclusion = exclusion, 
+                                 etnia = etnia, 
+                                 monoparental = hmp, 
+                                 anciano = anciano, 
+                                 menor = menor, 
+                                 joven = joven, 
+                                 discapacidad = discapacidad, 
+                                 barrio_dummy = u1agrup2, 
+                                 barrio = U2, 
+                                 alojamiento = U3, 
+                                 tamano_municipio = tam_habitat, 
+                                 ocupado = ocupado, 
+                                 parado = parado, 
+                                 gasto_energia = E64_3, 
+                                 gasto_agua = E64_4, 
+                                 retrasos = E65, 
+                                 clase_subjetiva = E70, 
+                                 evolucion12 = E73, 
+                                 avisos_cortes = E75_1_1, 
+                                 dinero_gastoscasa = E75_1_2,             
+                                 reducir_gfijos = E75_1_4, 
+                                 reducir_galim = E75_2_1, 
+                                 dieta_inadec = E75_2_2, 
+                                 reducir_ocio = E75_4_1, 
+                                 perdida_relaciones =E75_4_3,                                          
+                                 insalubridad = F78_2, 
+                                 entorno_degradado = F78_4, 
+                                 barrio_conflictivo = F78_5, 
+                                 necesidad_vivienda = F79, 
+                                 dispone_agua = F82_B_1, 
+                                 dispone_agua_cal = F82_B_2, 
+                                 dispone_elect = F82_B_3, 
+                                 dispone_calef = F82_B_6, 
+                                 temp_adecuada = F82_B_18, 
+                                 ppalocupacion = ppalocupacion,
+                                 tenencia = F77, 
+                                 rehab_cocina = F80_1, 
+                                 rehab_baño = F80_2, 
+                                 rehab_instal = F80_5, 
+                                 rehab_calef = F80_6, 
+                                 rehab_ventana = F80_7, 
+                                 rehab_tabiques = F80_3, 
+                                 rehab_suelo = F80_4, 
+                                 rehab_barreras = F80_8, 
+                                 dispone_baño = F82_B_5,
+                                 dispone_cocina = F82_B_8, 
+                                 dispone_frigo = F82_B_9, 
+                                 dispone_lava = F82_B_10, 
+                                 dispone_pc = F82_B_14, 
+                                 dispone_internet = F82_B_15, 
+                                 dispone_tv = F82_B_12, 
+                                 ingresos_calidad = INGR_CALIDAD, 
+                                 ruina = F78_1
+                                 )
+
+
+View(foessa2) # Comprobamos que la base de datos reducida se ha creado correctamente. 
+```
+
+
+En una primera exploración de la base de datos reducida vemos que esta tiene 29,953 observaciones y un total de 59 variables. Podemos ver que la base de datos está preparada para su análisis partiendo del individuo como unidad de análisis de la encuesta (a pesar que tanto el muestreo como la recogida de datos parten del hogar como unidad de encuesta). 
+
+*A continuación adjuntamos un cuadro resumen de las variables creadas:* 
+
+
+## Herramientas metodológicas: funciones propias y preparación de código por defecto 
+
+### Construcción de tablas de frecuencia para una variable (descriptiva univariante)
+
+En primer lugar, definimos la función que se utilizará para la creación de tablas de frecuencia de los indicadores de pobreza energética (tablas de frecuencia para una sola variable) y que se utilizarán a lo largo de la tesis: 
+
+```{r}
+#Función para crear tablas de indicadores (una variable)
+
+tabla_indicador <- function(x,t){
+    
+  # Creamos tabla y convertimos a objeto flextable 
+    z <- tabyl(x, show_na = FALSE) 
+    z <- qflextable(z)
+    
+    # Definimos las propiedades generales de la tabla 
+    set_table_properties(z, width = 1, layout = "autofit")
+    
+    # Definimos y creamos objetos de texto con formato 
+    # Formato general
+    def_par <- fp_par(text.align = "center", padding = 5) 
+    # Formato texto 
+    def_text <- fp_text(font.size = 9, 
+                        italic = FALSE, 
+                        font.family = "Arial")
+    #Formato de la cabecera 
+    def_text_header <- fp_text(font.size = 10, 
+                               italic = FALSE, 
+                               font.family = "Arial",
+                               color="dodgerblue4",
+                               bold = TRUE)
+    # Creamos el título 
+     z <- add_header_lines(x = z, 
+                         values = t)
+
+    # Aplicamos los estilos de texto diseñados anteriormente 
+    z <- style(x = z, pr_p = def_par, pr_t = def_text, part = "all")  
+    z <- style(x = z, pr_t = def_text_header, part = "header")
+    z <- set_header_labels(x = z, 
+                           n = "Total", 
+                           percent = "Porcentaje")
+    z <- fontsize(z, i=2, size = 9, part = "header")
+    z <- bold(z, j =1, bold = TRUE, part = "body")
+    z <- color(z, j = 1, color= "dodgerblue4", part = "body")
+    
+    # Bordes 
+    z <- border_remove(z) # Primero eliminamos los bordes
+
+    big_border = fp_border(color ="dodgerblue4", 
+                           style = "dotted", 
+                           width = 2)
+    std_border = fp_border(color="dodgerblue4", # color
+                           style = "solid", # estilo 
+                           width = 1) #anchura borde
+    z <- hline(z, i =1, border = big_border, part = "header")
+    z <- hline(z, i =2, border = std_border, part = "header")
+    z <- hline_bottom(z, part="body", border = std_border )
+    
+    # Imprimimos la tabla
+    z
+}
+
+#tabla_indicador(x = foessa2$temp_adecuada, #variable con marcador $ 
+#                t = "Temperatura adecuada") # Título de la tabla (nombre del indicador)
+
+```
+
+### Construcción de tablas de contingencia para dos o más variables (descriptiva multivariante)
+
+A continuación se define la función utilizada para la creación de tablas de contingencia presentadas en esta tesis doctoral. Crearemos una función propia para la creación de tablas de contingencia con los datos que iremos obteniendo. La creación de esta función facilita y simplifica la ejecución del código posterior.  
+
+```{r}
+
+crear_tabla <- function(var1,var2,title,varname,numcol){
+  # Creamos la tabla de frecuencias   
+  z <- proc_freq(foessa2,
+               row = var1, # Variable 1
+               col = var2, # Variable 2
+               include.row_percent = TRUE,
+               include.column_percent = TRUE,
+               include.table_percent = FALSE,
+               include.column_total = FALSE,
+               include.row_total = FALSE,
+               include.header_row = FALSE) 
+    
+  # Empezamos a definir las características de formato de la tabla 
+    set_table_properties(z, width = 1, layout = "autofit")
+  
+  # Creamos objetos específicos de definición de formato de texto   
+    def_par <- fp_par(text.align = "center", padding = 5)
+    def_text <- fp_text(font.size = 8, italic = FALSE, font.family = "Arial")
+    def_text_header <- fp_text(font.size = 8, italic = FALSE, bold = FALSE, font.family = "Arial", color="dodgerblue4", underlined = FALSE)
+
+  # Establecemos las cabeceras de la tabla
+    z <- set_header_labels(x = z, 
+                           label = "")
+    z <- add_header_row( x = z, 
+                         values = c(" ","Cálculo", varname),
+                         colwidths = c(1,1,numcol))
+    z <- add_header_lines(x = z, 
+                         values = title)
+  
+  # Aplicamos los diseños da toda la tabla 
+    z <- style(x = z, 
+               pr_p = def_par, 
+               pr_t = def_text, 
+               part = "all")  
+  # Aplicamos los diseños de texto a las cabeceras de la tabla de la tabla
+    z <- style(x = z, 
+               pr_t = def_text_header, 
+               part = "header")
+    z <- fontsize(z, i = 2, size = 8, part = "header")
+    z <- bold(z, i = 2, part = "header")
+    z <- fontsize(z, i = 1, size = 10, part = "header")
+    z <- bold(z, i = 1, part = "header")
+    #z <- bg(z, i = 2,bg = "aliceblue", part = "header")
+    z <- bg(z, i = 3,bg = "aliceblue", part = "header")
+  
+  # Modificamos características específicas del cuerpo de la tabla 
+    z <- bg(z, j = 1,bg = "dodgerblue4", part = "body")
+    z <- color(z, j=1, color = "white", part = "body")
+    z <- bold(z, j = 1, part = "body")
+    z <- italic(z, j = 2, part = "body")
+    
+   #Definimos los bordes de la tabla 
+    z <- border_remove(z) # Primero eliminamos los bordes
+
+    big_border = fp_border(color ="dodgerblue4", 
+                           style = "dotted", 
+                           width = 2)
+    std_border = fp_border(color="dodgerblue4", # color
+                           style = "solid", # estilo 
+                           width = 1) #anchura borde
+    z <- hline(z, i =1, border = big_border, part = "header")
+    z <- hline(z, i =2, border = std_border, part = "header")
+    z <- hline_bottom(z, part="header", border = std_border )
+    z <- hline(z, i =3, border = std_border, part = "body")
+    z <- hline(z, i =6, border = std_border, part = "body")
+    z <- hline_bottom(z, part="body", border = std_border )
+    
+  # Refinamos los ajustes y los espaciados de la tabla y cabecera 
+    z <- line_spacing(z, i =2, space = 0.7, part = "header")
+    z <- padding(z, i =3, padding = 2, part = "header")
+
+  # Imprimimos la tabla 
+    z
+}
+
+
+
+
+#crear_tabla(var1 ="PE", #variable dependiente
+#            var2 ="discapacidad", # variable independiente
+#            title = "Pobreza energética y discapacidad", # título de la tabla 
+#            varname = "Tiene discapacidad reconocida", # Variable independiente
+#            numcol = 2) # Número de valores de la variable independiente 
+
+```
+
+### Graficación de tablas de contingencia para dos o más variables (descriptiva multivariante)
+
+También definiremos una función propia para el diseño de gráficos de barra con el objetivo de representar las tablas de contingencia más relevantes que creemos a lo largo de esta sección cuantitativa de la tesis: 
+
+```{r}
+crear_grafico <- function(x,y,title,xtitle){
+  df <- foessa2 %>% 
+    drop_na({{x}}) %>%
+    group_by({{y}},{{x}}) %>% 
+    tally() %>% 
+    complete({{x}}, fill = list(n = 0)) %>% 
+    mutate(percentage = n / sum(n) * 100)
+  
+  ggplot(df, aes({{x}}, percentage, fill = {{y}})) + 
+    geom_bar(stat = 'identity', position = 'dodge') +
+    scale_y_continuous("Porcentaje de población", expand = c(0,0))+ 
+    scale_x_discrete(xtitle)+ 
+    scale_fill_manual("Vulnerabilidad energética", values = c("#15607a",      
+                                                       "#18a1cd",
+                                                       "cyan")) +
+    ggtitle(title) +
+    theme_classic(base_size=10) + 
+    theme(plot.title = element_text(face = "bold", 
+                                    size = 10, 
+                                    color = "#00344c", 
+                                    vjust = 3, 
+                                    hjust = 0.5),
+          axis.text.x = element_text(#angle = 30, 
+                                     hjust = 0.5, 
+                                     vjust = 2, 
+                                     colour = "#00344c", 
+                                     size = rel(0.9)),
+          axis.title.x = element_text(face = "bold", 
+                                      size = 9),
+          axis.title.y = element_text(face = "bold", 
+                                      size = 9, 
+                                      vjust = 3),
+          axis.text.y = element_text(size=8, 
+                                     hjust = 0),
+          axis.line = element_blank(),
+          axis.ticks.x = element_blank(), 
+          legend.title = element_text(colour = "#00344c", size = 8, face = "bold")) 
+  
+}
+
+#crear_grafico(x = anciano, #variable independiente
+#              y = PE,  # variable dependiente 
+#              title = "Pobreza energética y personas mayores", # título del gráfico
+#              xtitle = "Hogares con un miembro de más de 65 años") # título axis X 
+
+
+```
+ 
+
+# Indicadores básicos de vulnerabilidad energética 
+	
+## Indicador consensual: temperatura adecuada en el hogar 
+
+El primer indicador analizado es el indicador consensual de **Temperatura adecuada en el hogar**. Este indicador se construye a partir de la variable `temp_adecuada` de la encuesta, que se extrae de la pregunta: 
+
+> Pregunta F.82: De este listado de cosas, dígame las que considera necesario y de cuales dispone: (...) p) Mantener la vivienda a una temperatura adecuada. 
+
+A partir de los resultados, obtenemos la siguiente tabla: 
+
+```{r}
+
+# Si nos fijamos, en el caso del indicador de temperatura adecuada, la persona estará afectada cuando la respuesta es 'No'. Para evitar problemáticas, recodificaremos esta variable para indicar que la respuesta 'Sí' indica que la persona está afectada por este indicador
+
+table(foessa2$temp_adecuada)
+table(foessa2$temp_adecuada_r)
+foessa2$temp_adecuada_r <- fct_recode(foessa2$temp_adecuada, Sí ="No", No ="Si")
+
+
+tabla_indicador(x = foessa2$temp_adecuada_r, 
+                t = "Temperatura inadecuada en el hogar")
+```
+
+De acuerdo con estos resultados, un 22,42% de la población no puede mantener su hogar a una temperatura adecuada. 
+
+
+## Indicador consensual de retrasos en el pago de facturas de suministros 
+
+El segundo indiciador, también de tipo consensual, será el de **Retrasos en el pago de facturas**. A partir de la variable `retrasos` de la base de datos
+
+> Pregunta E.65: ¿Tuvo, durante el año 2017, algún retraso en el pago de recibos (agua, gas, calefacción, electricidad)?
+
+De los resultados obtenidos para la población, extraemos los siguientes resultados: 
+
+```{r}
+
+#Limpiaremos la variable para su posterior recodificación 
+foessa2$retrasos <- as.character(foessa2$retrasos) # Convertimos a carácter (character string)
+foessa2$retrasos <- str_trim(foessa2$retrasos) # Eliminamos los espacios en blanco del string 
+foessa2$retrasos <- as.factor(foessa2$retrasos) # Reconvertimos en factor para su posterior manipulación  
+
+#Recodificación de la variable (simplificación de niveles de respuesta)
+foessa2$retrasos1 <- fct_collapse(foessa2$retrasos, 
+                                  "Sí" = c("Sí, dos veces o más","Sí, solamente una vez"), 
+                                  "No" = "No", 
+                                  "NSNC" = c("No contesta", "No sabe"))
+
+# Eliminar el valor NSNC a NA 
+foessa2 <- foessa2 %>% replace_with_na(replace = list(retrasos1 = "NSNC"))
+foessa2$retrasos1 <-  fct_drop(foessa2$retrasos1)
+
+summary(foessa2$retrasos1)
+
+# Creamos la tabla de resumen para el indicador sobre retrasos en el pago de suministros 
+ind_ret <- 100*prop.table(table(foessa2$retrasos1))
+ind_ret # Nos permite ver los resultados del indicador 
+
+tabla_indicador(x = foessa2$retrasos1, 
+                t = "Retrasos en el pago de facturas")
+
+```
+Tal como nos indican los resultados, el 19,04% de la población tuvo retrasos en el pago de facturas de suministros durante el año 2017. 
+
+## Indicador de Gasto  desproporcionado (2M)
+
+El tercer indicador analizado es un indicador basado en el gasto. El indicador de Gasto Desproporcionado (2M) se define como el porcentaje de hogares cuya participación del gasto energético en los ingresos es más del doble de la mediana nacional 
+
+Para calcular este indicador hemos partido de diversas variables presentes en la encuesta EINSFOESSA, principalmente la variable `gasto_energia` e `ingresos_hogar`. Estas variables se extraen a partir de las preguntas del cuestionario siguientes: 
+
+> Pregunta E64_3 sobre tipos de gastos del hogar, en que se contabilizan los gastos relativos a electricidad y gas. 
+
+> La variable INGR_SUMAFIABLE_HOGAR de los microdatos proporcionados por la Fundación FOESSA, construida a partir de los datos de ingresos familiares obtenidos en la sección de Economía de la encuesta.
+
+```{r}
+
+# Recodificación de variables 
+
+foessa2$gasto_energia <- fct_recode(foessa2$gasto_energia, "0" = "No tiene  gasto")#Recodificamos la variable sobre gasto de energia - que, inicialmente, es un factor - para convertir el nivel "No tiene gasto" en O
+
+#Transformamos la variable gasto_energia en numérica 
+foessa2$gasto_energia_num <- as.numeric(as.character(foessa2$gasto_energia))
+
+summary(foessa2$gasto_energia_num) # Con la función summary podemos ver las principales medidas de dispersión de la variable 
+
+```
+A continuación, calcularemos la proporción del gasto energético (equivalente) en relación a los ingresos disponibles equivalentes de cada una de las observaciones de la base de datos: 
+
+```{r}
+foessa2 <- foessa2 %>% mutate(share_energy = gasto_energia_num*100/ingresos_hogar)
+
+is.na(foessa2$share_energy) <- sapply(foessa2$share_energy, is.infinite)
+
+length(foessa2$share_energy)
+4728*100/29953 #15.7% valores perdidos 
+
+summary(foessa2$share_energy)
+```
+A continuación creamos un indicador que indique si el porcentaje de gasto energético sobre los ingresos del hogar se situan por encima del doble de la mediana. 
+
+```{r}
+foessa2 <- foessa2 %>% mutate("TWO_M" = case_when(
+  share_energy > 4.128*2 ~ "Sí", 
+  TRUE ~ "No"))
+
+foessa2$TWO_M <- as.factor(foessa2$TWO_M)#Convertir a factor 
+length(foessa2$TWO_M)
+```
+Finalmente creamos una tabla con los resultados: 
+
+```{r}
+ind_2M <- 100*prop.table(table(foessa2$TWO_M))
+ind_2M
+
+tabla_indicador(x = foessa2$TWO_M, 
+                t = "Gasto desproporcionado")
+
+```
+De acuerdo con los cálculos realizados, un 15,83% de los hogares de la muestran tienen un gasto energético desproporcionado, en tanto la proporción de gasto energético sobre sus ingresos se sitúa por encima de la mediana de la muestra. 
+
+
+## Indicador de Pobreza Energética Escondida (M/2)
+
+La pobreza energética escondida (HEP) se define como el porcentaje de los hogares cuyo gasto energético es inferior a la mitad de la mediana. Para el cálculo de este indicador con los datos de EINSFOESSA se ha partido de la variable `share_energy` creada anteriormente a través de la recodificación de variables existentes. 
+
+```{r}
+#Creamos la nueva variable para el indicador "HEP" (Pobreza energética escondida)
+foessa2 <- foessa2 %>% mutate("HEP" = case_when(
+  share_energy < 4.128/2 ~ "Sí", 
+  TRUE ~ "No"
+))
+
+foessa2$HEP <- as.factor(foessa2$HEP)#Convertir a factor
+
+#Creamos tabla con resultados
+100*prop.table(table(foessa2$HEP))
+
+#Ejecutamos la tabla 
+tabla_indicador(x = foessa2$HEP, 
+                t = "Pobreza Energética Escondida")
+
+```
+Los resultados nos muestran que un 17,28% de la población tiene un gasto energético inferior a la mitad de la mediana de la muestra. 
+
+
+## Superposición de indicadores: afectación de dos o más indicadores 
+
+Como hemos mencionado anteriormente, los indicadores oficiales de pobreza y vulnerabilidad energética se extraren de dos encuestas oficiales distintas: la [Encuesta sobre condiciones de vida](url) y la [Encuesta de Presupuestos Familiares](url). Este hecho ha dificultado el análisis de superposición o coincidencia de distintos factores de vulnerabilidad energética sobre una misma población. El primer análisis de este tipo en España fue llevado a cabo en su último informe sobre pobreza energética de la Asociación Española de Ciencias Ambientales. 
+
+En este caso, gracias a la posibilidad de construir todos los indicadores sobre una misma muestra, y además asegurar la representación de hogares vulnerables a través del tipo de muestreo empleado en la encuesta EINSFOESSA, nos es posible analizar la superposición de indicadores y la afectación de los mismos en sus distintos grados a una población específica. 
+
+En primer lugar, podemos ver un resumen de los cuatro indicadores construidos hasta el momento: 
+
+```{r}
+#Overlapping entre indicadores 
+summary(foessa2$retrasos1)
+summary(foessa2$temp_adecuada)
+summary(foessa2$TWO_M)
+summary(foessa2$HEP)
+```
+
+A continuación, crearemos una nueva variable para el análisis de la coincidencia de afectación de los distintos indicadores de pobreza energética sobre una misma población. En primer lugar creamos una variable que nos indique si un sujeto está afectado por al menos uno de los cuatro indicadores: 
+
+```{r}
+#Creamos una nueva variable llamada 'PE' que nos indicará si un individuo está afectado por al menos un indicador: 
+
+foessa2 <- foessa2 %>% mutate(PE = case_when(
+  retrasos1 == "Sí" ~ "PE", 
+  temp_adecuada == "No" ~ "PE", 
+  TWO_M == "Sí" ~ "PE", 
+  HEP == "Sí" ~ "PE", 
+  TRUE ~ "NO PE"
+))
+
+foessa2$PE <- as.factor(foessa2$PE) #Transformamos a factor para su interpretación 
+
+ind_PE <- 100*prop.table(table(foessa2$PE))
+pandoc.table(ind_PE)
+
+tabla_indicador(x = foessa2$PE, 
+                t = "Población afectada por alguno de los indicadores PE")
+```
+A partir de estos datos podemos ver que un 51,8% de la muestra está afectada por alguno de los indicadores de pobreza energético reconocidos en la Estrategia Nacional contra la Pobreza Energético. 
+
+A continuación nos interesará evaluar qué proporción de la población de la muestra está afectada por dos o más indicadores: 
+
+```{r}
+
+# Recodificamos las variables afectadas para convertirlas en variables 'dummy' 
+df <- dummy_cols(foessa2, 
+                 select_columns = c("retrasos1", "temp_adecuada", "TWO_M", "HEP"), 
+                 ignore_na = TRUE) 
+
+df <- df %>% mutate(PE_Suma = retrasos1_Sí + temp_adecuada_No + TWO_M_Sí + HEP_Sí) #Creamos una variable para saber por cuantos de los indicadores una persona está afectada 
+
+df$PE_Suma <- as.factor(df$PE_Suma) # Convertimos la nueva variable a factor para su mejor interpretación 
+
+ind_PESum <- 100*prop.table(table(df$PE_Suma)) # Construimos el nuevo indicador de superposición de indicadores
+pandoc.table(ind_PESum) #Ejecutamos el nuevo indicador 
+```
+También podemos obtener estos datos en una tabla: 
+
+```{r}
+tabla_indicador(x = df$PE_Suma, 
+                t = "Población afectada por 1, 2 y 3 indicadores")
+```
+
+A partir de este nuevo indicador, podemos ver: 
+* Un 33,65% de la población está afectada por uno de los indicadores de pobreza energética 
+* Un 13,59% de la población está afectada por dos de los indicadores de pobreza energética 
+* Un 4,5% de la población está afectada por tres de los indicadores de pobreza energética 
+
+## Indicador multidimensional de pobreza energética 
+En este apartado construiremos un indicador multidimensional de vulnerabilidad energética que nos permite, con un solo indicador, contemplar e incluir las distintas dimensiones de vulnerabilidad y precariedad energética. 
+
+El objetivo de construir un indicador multidimensional de vulnerabilidad energética es poder analizar las características poblacionales y de contexto, a partir de los datos disponibles, teniendo en cuenta la población afectada
+
+### Selección de variables 
+Para hacerlo, hemos seleccionado una serie de variables, a partir de la literatura previa y de la selección de indicadores oficiales del estado español. 
+
+Los indicadores oficiales incorporados a nuestro indicador son los siguientes: 
+
+- Temperatura inadecuada en el hogar
+- Atrasos en el pago de facturas 
+- Gasto excesivo (2M)
+- Consumo energético excesivamente bajo (HEP)
+
+
+### Cálculo de redundancias 
+En cuanto al método de construcción de este indicador multidimensional utilizaremos el método descrito por Sokolowski et al. (2020) basado en la propuesta de Alkire et al. (2015). 
+
+Este método se basa en la construcción de un indicador multidimensional, a partir de la previa selección de indicadores, teniendo en cuenta el cálculo de redundancia entre las variables seleccionadas.  
+
+```{r}
+
+# CREAMOS UNA FUNCIÓN PARA CALCULAR LA REDUNDANCIA 
+
+redundancia <- function(var1,var2){
+  var1 <- enquo(var1)
+  var2 <- enquo(var2)
+  
+  #Total población
+  total <-  nrow(foessa2)
+  
+  #Porcentaje de población afectada por el indicador 1
+  ind_1_p <- nrow(foessa2 %>% filter(!!var1 == "Sí"))
+  ind_1_p <- (ind_1_p/total)*100
+  
+  #Porcentaje de población afectada por el indicador 2
+  ind_2_p <- nrow(foessa2 %>% filter(!!var2 == "Sí"))
+  ind_2_p <- (ind_2_p/total)*100
+  
+  # Porcentaje de población afectada por ambos indicadores 
+  ind_mix <- nrow(foessa2 %>% filter(!!var1 == "Sí" & !!var2 == "Sí"))
+  ind_mix <- (ind_mix/total)*100
+  
+  dos <- c(ind_1_p, ind_2_p)
+  
+  #Cálculo de la redundancia
+  red <- ind_mix/min(dos)
+  red
+}
+
+```
+A partir de esta función, calcularemos la redundancia entre las variables seleccionadas para el indicador multidimensional que construiremos: 
+
+```{r}
+
+#Redundancia entre temperatura inadecuada y retrasos - 0.56
+redundancia(var1 = temp_adecuada_r, 
+            var2 = retrasos1)
+
+#Redundancia entre temperatura inadecuada y 2M - 0.37
+redundancia(var1 = temp_adecuada_r, 
+            var2 = TWO_M)
+
+
+#Redundancia entre temperatura inadecuada y 2M - 0.16
+redundancia(var1 = temp_adecuada_r, 
+            var2 = HEP)
+
+#Redundancia entre retrasos facturas y 2M - 0.33
+redundancia(var1 = retrasos1, 
+            var2 = TWO_M)
+
+#Redundancia entre retrasos facturas y hep - 0.12
+redundancia(var1 = retrasos1, 
+            var2 = HEP)
+
+#Redundancia entre 2m y hep - 0
+redundancia(var1 = TWO_M, 
+            var2 = HEP)
+
+
+```
+
+A continuación podemos ver los valores obtenidos a partir del cálculo de redundancias anterior: 
+
+|                           	| Temperatura <br>inadecuada 	| Retrasos <br>facturas 	| 2M   	| HEP  	| Deficiencias <br>hogar |
+|---------------------------	|----------------------------	|-----------------------	|------	|------	|----------------------  |
+| Temperatura<br>inadecuada 	| 1                          	| 0.56                  	| 0.37 	| 0.16 	| 0.42	                 |
+| Retrasos <br>facturas     	| 0.56                       	| 1                     	| 0.33 	| 0.12 	| 0.35                   |
+| 2M                        	| 0.37                       	| 0.33                  	| 1    	| 0    	| 0.22                	 |
+| HEP                       	| 0.16                       	| 0.12                  	| 0    	| 1    	| 0.16	                 |
+| Deficiencias<br>hogar      	| 0.42                       	| 0.35                   	| 0.22	| 0.16 	| 1   	                 |
+
+En general, podemos ver que las correlaciones y redundancias encontradas no son altas, lo que nos indica que los indicadores seleccionados están analizando dimensiones del fenómeno diferentes. Esto ocurre en todos los casos, excepto entre las variables subjetivas de temperatura inadecuada en el hogar y retrasos en el pago de facturas de suministros. El índice de redundancia entre estos dos indicadores es de 0.56, mostrando que en un 56% de los casos, la población afectada por el indicador de temperatura inadecada en el hogar también está afectada por el indicador de retrasos en el pago de facturas de suministros. Otro índice que destaca es el índice de redundancia y correlación entre Deficiencias del hogar y el indicador subjetivo de temperatura inadecuada, aún sin superar el umbral de 0.5. 
+
+Dada esta circunstancia, se tomarán decisiones en la asignación del peso relativo a estas  dimensiones, con el objetivo de no sobredimensionar estos indicadores que nos mostrarían un grado relativamente alto de correlación. 
+
+### Construcción del indicador 
+
+Como hemos indicado, en este punto construiremos un indicador multidimensional que tendrá en cuenta los cuatro subindicadores anteriores. Para ello se tomarán una serie de decisiones en relación, por una parte, al peso relativo de cada uno de los subindicadores, y por otra parte, la forma de agregación. 
+
+En lo que respecta al peso relativo, se aplicará la siguiente distribución:
+
+| Indicador                  	| Peso <br>relativo sobre 1 	|
+|---------------------------	|----------------------------	|
+| Temperatura<br>inadecuada   | 0.20                        |
+| Retrasos<br>factura         | 0.20                        |
+| 2M                          | 0.30                        |
+| HEP                         | 0.30                       |
+
+Se ha partido de una asignación igualitaria de peso a los diferentes indicadores, matizando posteriormente el peso asignado a las variables subjetivas de temperatura inadecuada, retrasos en las facturas y deficiencias en el hogar por haber obtenido índices de redundancia sensiblemente superiores al resto. 
+
+En relacióna al modo de agregación, se optará por una agregación additiva: 
+
+```{r}
+
+foessa2 <- dummy_cols(foessa2, 
+                 select_columns = c("retrasos1", "temp_adecuada", "TWO_M", "HEP", "def_hogar"),
+                 remove_first_dummy = TRUE,
+                 ignore_na = TRUE) 
+
+# Asignamos el peso relativo a cada una de las columnas 
+
+foessa2$temp_adecuada_No_w <- foessa2$temp_adecuada_No*0.20
+foessa2$retrasos1_Sí_w <- foessa2$retrasos1_Sí*0.20
+foessa2$TWO_M_Sí_w <- foessa2$TWO_M_Sí*0.30
+foessa2$HEP_Sí_w <- foessa2$HEP_Sí*0.30
+
+foessa2$Vulnerabilidad_num <- foessa2 %>% select(temp_adecuada_No_w, retrasos1_Sí_w, TWO_M_Sí_w, HEP_Sí_w) %>% rowSums(na.rm=TRUE)
+
+foessa2$Vulnerabilidad_num <- as.numeric(foessa2$Vulnerabilidad_num)
+
+summary(foessa2$Vulnerabilidad_num)
+  
+```
+Una vez hemos calculado el índice que irá desde 0 a 1, podemos agrupar las observaciones en cuatro grupos: 
+
+```{r}
+foessa2 <-  foessa2 %>% mutate ("Vulnerabilidad_Energetica" = case_when(
+  Vulnerabilidad_num == 0 ~ "No vulnerable", 
+  Vulnerabilidad_num >0 & Vulnerabilidad_num <0.5 ~ "Vulnerabilidad baja", 
+  Vulnerabilidad_num >0.5 ~ "Vulnerabilidad alta", 
+  TRUE ~ "No vulnerable"
+))
+
+# Ordenamos los niveles obtenidos 
+foessa2$Vulnerabilidad_Energetica <- factor(foessa2$Vulnerabilidad_Energetica,
+                                 levels = c("No vulnerable", "Vulnerabilidad baja", "Vulnerabilidad alta"),
+                                 ordered = TRUE)
+
+summary(foessa2$Vulnerabilidad_Energetica)
+plot(foessa2$Vulnerabilidad_Energetica, col = "#18a1cd", border = "#18a1cd")
+
+```
+
+# Caracterización de la población en situación de precariedad energética 
+
+Hasta el momento nos hemos centrado en la construcción de los indicadores oficiales de pobreza energética. Ahora bien, también nos interesará ir más allá de los indicadores y caracterizar esta población. Para ello, combinaremos las variables de caracterización propuestas por el gobierno español en su Estrategia Nacional contra la Pobreza Energética, con el objetivo de facilitar la comparación de datos, y por otro lado, aprovechando la amplitud de la información recogida por la encuesta de EINSFOESSA, incorporaremos nuevas variables de caracterización que nos proporcionan una imagen más concreta y definida de las condiciones de vida de la población afectada por algunos de los indicadores de vulnerabilidad energética. 
+
+A continuación especificamos las dimensiones en torno a las cuales hemos agrupado las variables de caracterización analizadas: 
+1. Dimensión 1: Características familiares 
+2. Dimensión 2: características económicas
+4. Dimensión 3: Características de la vivienda 
+3. Dimensión 4: Características del entorno urbano 
+5. Dimensión 5: Impactos sobre la salud y relaciones sociales 
+6. Dimensión 6: Vulnerabilidad energética y grupos minoritarios 
+
+## Dimensión 1: Características familiares 
+
+### Vulnerabilidad Energética según tamaño del hogar
+
+Para analizar la distribución de la población en situación de vulnerabilidad y precariedad energética según el tamaño del hogar, primero necesitaremos crear una variable de tamaño del hogar que nos permite su comparabilidad: 
+
+```{r}
+foessa2$tamano_hogarf <- as.factor(foessa2$tamano_hogar)
+levels(foessa2$tamano_hogarf) # Verificamos el número de niveles iniciales de la variable tamaño hogar 
+
+foessa2$tamano_hogarf <- fct_collapse(foessa2$tamano_hogarf, 
+                                 "1 miembro" = c("1"), 
+                                 "2 miembros" = c("2"), 
+                                 "3 miembros" = c("3"), 
+                                 "4 miembros" = c("4"), 
+                                 "5 miembros o más" = c("5", "6", "7", "8", "9", "10"), 
+                                 other_level = NULL)
+
+levels(foessa2$tamano_hogarf) # Verificamos el número de niveles iniciales de la variable recodificada 
+```
+Una vez tenemos creada la nueva variable de tamaño del hogar, podemos generar tablas de contingencia a partir de las variables de interés para los distintos indicadores, empezando con la variable general de `PE` que nos indica la población afectada por alguno de los indicadores: 
+
+```{r}
+crear_tabla(var1 ="Vulnerabilidad_Energetica", #variable dependiente
+            var2 ="tamano_hogarf", # variable independiente
+            title = "vulnerabilidad energética según tamaño del hogar", # título de la tabla 
+            varname = "Número de miembros del hogar", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+
+
+```
+```{r}
+crear_grafico(x = tamano_hogarf, #variable independiente
+              y = Vulnerabilidad_Energetica,  # variable dependiente 
+              title = "Vulnerabilidad energética según tamaño del hogar", # título del gráfico
+              xtitle = "Número de miembros del hogar") # título axis X 
+```
+
+
+#### Indicador de temperatura adecuada segun tamaño del hogar
+
+```{r}
+crear_tabla (var1 = "temp_adecuada", 
+             var2 = "tamano_hogarf", 
+             title = "Temperatura adecuada según tamaño del hogar", 
+             varname = "Puede tener el hogar a una temperatura adecuada", 
+             numcol = 5)
+
+
+```
+
+#### Indicador de retrasos en el pago de facturas de suministros segun tamaño del hogar
+
+```{r}
+crear_tabla("retrasos1",
+            "tamano_hogarf",  
+            "Retrasos en el pago de factures según tamaño del hogar", 
+            "Número de miembros del hogar", 
+            5)
+
+```
+
+#### Indicador de gasto desproporcionado (2M) segun tamaño del hogar
+
+```{r}
+crear_tabla( "TWO_M",
+             "tamano_hogarf", 
+             "Gasto desproporcionado según tamaño del hogar", 
+             "Número de miembros del hogar", 5)
+```
+
+#### Indicador de Pobreza Energética Escondida (M/2) segun tamaño del hogar
+
+```{r}
+crear_tabla("HEP", "tamano_hogarf", "Pobreza Energética Escondida según tamaño del hogar", "Número de miembros del hogar", 5)
+```
+
+### Hogares con (al menos) una persona de más de 65 años
+
+En primer logar, veremos la distribución de este perfil de hogar en la población afectada por alguno de los indicadores de Vulnerabilidad energética: 
+
+```{r}
+# Como primer paso recodificaremos los valores de la variable anciano para simplificar las etiquetas
+
+foessa2$anciano <- fct_recode(foessa2$anciano, 
+                    No ="Hogar sin personas de 65 o más años", 
+                    Si = "Hogar con personas de 65 o más años")
+
+# Creamos tabla de contingencia entre la variable agregada PE y anciano 
+
+crear_tabla ("Vulnerabilidad_Energetica", "anciano", "Vulnerabilidad energética en hogares con personas mayores", "Hogares con un miembro de más de 65 años", 2)
+
+```
+```{r}
+crear_grafico(x = anciano, 
+             y = Vulnerabilidad_Energetica,
+             title = "Vulnerabilidad energética en hogares con personas mayores", 
+             xtitle = "Hogares con un miembro de más de 65 años")
+```
+
+
+#### Indicador de temperatura inadecuada en el hogar en hogares con un miembro mayor de 65 años 
+
+```{r}
+crear_tabla ("temp_adecuada", "anciano", "Temperatura adecuada en hogares con personas mayores", "Hogares con un miembro de más de 65 años", 2)
+```
+
+#### Indicador de retrasos en el pago de suministros en hogares con un miembro mayor de 65 años 
+
+```{r}
+crear_tabla ("retrasos1", "anciano", "Retrasos en el pago de suministros en hogares con personas mayores", "Hogares con un miembro de más de 65 años", 2)
+```
+
+#### Indicador de gasto desproporcionado energético (2M) en hogares con un miembro mayor de 65 años 
+
+```{r}
+crear_tabla( "TWO_M", "anciano", "Gasto desproporcionado en hogares con personas mayores", "Hogares con un miembro de más de 65 años", 2)
+```
+
+#### Indicador de pobreza energética escondida (M/2) en hogares con un miembro mayor de 65 años 
+
+```{r}
+crear_tabla("HEP", "anciano", "Pobreza Energética Escondida en hogares con personas mayores", "Hogares con un miembro de más de 65 años", 2)
+```
+
+
+### Hogares con dos adultos (sin niños) y uno de ellos de más de 65 años
+
+Para el cálculo de estos indicadores, primero crearemos una nueva variable de referencia para identificar esta tipología específica de hogares: 
+
+```{r}
+
+levels(foessa2$anciano)
+
+foessa2 <- foessa2 %>% mutate(dos_adult_65 = case_when(
+                                              tamano_hogarf == "2 miembros" & 
+                                                menor == "Hogar sin menores de 18 años"  & 
+                                                anciano == "Si" ~ "Sí",
+                                              TRUE ~ "No"))
+
+foessa2$dos_adult_65 <- as.factor(foessa2$dos_adult_65)
+
+```
+Aplicamos esta variable al indicador general de Vulnerabilidad energética: 
+
+```{r}
+crear_tabla ("Vulnerabilidad_Energetica", "dos_adult_65", "Vulnerabilidad energética en hogares con dos adultos y uno + 65 años", "Hogares con dos adultos (sin niños) y uno + 65 años", 2)
+
+```
+```{r}
+crear_grafico(x = dos_adult_65, 
+             y = Vulnerabilidad_Energetica,
+             title = "Hogares con dos adultos y uno + 65 años", 
+             xtitle = "Hogares con dos adultos (sin niños) y uno + 65 años" )
+```
+
+
+A partir de esta nueva variable, ya podremos calcular las correspondientes tablas de población afectada por alguno de los indicadores de pobreza energética en este tipo de hogares. 
+
+#### Indicador de temperatura inadecuada en el hogar en hogares con dos adultos (sin niños) y uno de ellos de más de 65 años
+
+```{r}
+crear_tabla ("temp_adecuada", "dos_adult_65", "Temperatura inadecuada en hogares con dos adultos y uno + 65 años", "Hogares con dos adultos (sin niños) y uno + 65 años", 2)
+```
+
+#### Indicador de retrasos en el pago de suministros en hogares con dos adultos (sin niños) y uno de ellos de más de 65 años
+
+```{r}
+crear_tabla ("retrasos1", "dos_adult_65", "Retrasos en el pago de suministros en hogares con dos adultos y uno + 65 años", "Hogares con dos adultos (sin niños) y uno + 65 años", 2)
+```
+
+#### Indicador de gasto desproporcionado energético (2M) en hogares con dos adultos (sin niños) y uno de ellos de más de 65 años
+
+```{r}
+crear_tabla ("TWO_M", "dos_adult_65", "Gasto energético desproporcionado en hogares con dos adultos y uno + 65 años", "Hogares con dos adultos (sin niños) y uno + 65 años", 2)
+
+```
+
+#### Indicador de pobreza energética escondida (M/2) en hogares con dos adultos (sin niños) y uno de ellos de más de 65 años
+
+```{r}
+crear_tabla("HEP", "dos_adult_65", "Pobreza Energética escondida en hogares con dos adultos y uno + 65 años", "Hogares con dos adultos (sin niños) y uno + 65 años", 2)
+```
+
+### Hogares Monoparentales y Monomarentales
+
+En primer lugar, en relación a los hogares monomarentales y monoparentales, lo que haremos será distinguir entre dos variables distintas: 
+* Hogares monoparentales, a partir de la variable `monoparental` para hogares con niños y un solo adulto. En este caso, se consideran tanto los hogares en que el único adulto es un hombre o una mujer. 
+* Hogares monomarentales, en que el único adulto es una mujer 
+
+```{r}
+
+# Primero cambiaremos el orden y el nombre de los niveles en la variable monoparental general para facilitar la comprensión y comparación
+
+levels(foessa2$monoparental)
+foessa2$monoparental <- relevel(foessa2$monoparental, "Hay nucleo monoparental")
+
+levels(foessa2$monoparental)[levels(foessa2$monoparental)=="Hay nucleo monoparental"] <- "Hogar monoparental"
+
+levels(foessa2$monoparental)[levels(foessa2$monoparental)=="No hay nucleo monoparental"] <- "Hogar no monoparental"
+
+levels(foessa2$monoparental)
+
+# Primero crearemos una variable para identificar los hogares monomarentales en que el adulto es una mujer 
+
+foessa2 <- foessa2 %>% mutate(monomarental = case_when(
+  monoparental == "Hogar monoparental" & edad >= 18 & sexo == "Mujer" ~ "Hogar monomarental", 
+  TRUE ~ "Hogar no monomarental"
+))
+
+foessa2$monomarental <- as.factor(foessa2$monomarental)
+
+summary(foessa2$monomarental)
+
+# Podemos crear una variable para analizar los hogares monoparentales en que el adulto es un hombre
+
+foessa2 <- foessa2 %>% mutate(monoparental_h = case_when(
+  monoparental == "Hogar monoparental" & edad >= 18 & sexo == "Varón" ~ "Hogar monoparental (h)", 
+  TRUE ~ "Hogar no monoparental (h)"
+))
+
+foessa2$monoparental_h <- as.factor(foessa2$monoparental_h)
+
+summary(foessa2$monoparental_h)
+                          
+```
+Una vez tenemos creada la nueva variable para hogares monomarentales, podemos analizar el impacto de la vulnerabilidad energética en estos hogares con la variable `Vulnerabilidad_Energetica`:
+
+**Prevalencia de la Vulnerabilidad energética en hogares monoparentales (hombres y mujeres):**
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "monoparental", "Pobreza Energética en hogares monoparentales", "Hogares monoparentales", 2)
+```
+```{r}
+crear_grafico(x = monoparental, 
+             y = Vulnerabilidad_Energetica,
+             title = "Vulnerabilidad energética en Hogares monoparentales", 
+             xtitle = "Hogares monoparentales (hombres y mujeres)")
+```
+
+
+**Impacto de la Vulnerabilidad energética en hogares monomarentales:**
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "monomarental", "Vulnerabilidad Energética en hogares monomarentales", "Hogares monomarentales", 2)
+
+```
+```{r}
+crear_grafico(x = monomarental, 
+             y = Vulnerabilidad_Energetica,
+             title = "Vulnerabilidad energética y Hogares monomarentales", 
+             xtitle = "Hogares monomarentales")
+```
+
+
+**Impacto de la Vulnerabilidad energética en hogares monoparentales (hombres):**
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "monoparental_h", "Vulnerabilidad Energética en hogares monoparentales (hombres)", "Hogares monoparentales(hombres)", 2)
+```
+```{r}
+crear_grafico(x = monoparental_h, 
+             y = Vulnerabilidad_Energetica,
+             title = "Vulnerabilidad energética y Hogares monoparentales (hombres)", 
+             xtitle = "Hogares monoparentales (hombres)")
+```
+
+
+De los resultados se desprende que, aunque existe una ligera diferencia entre el impacto de la pobreza energética entre hogares monoparentales (hombres) y hogares monomarentales, la diferencia no es significativa. 
+
+A continuación, se analizarán los distintos indicadores de pobreza energética pero únicamente para la variable de hogares monoparentales generales. 
+
+#### Indicador de temperatura inadecuada en hogares monoparentales 
+
+```{r}
+crear_tabla ("temp_adecuada", "monoparental", "Temperatura adecuada en el hogar en hogares monoparentales", "Hogares monoparentales", 2)
+```
+
+#### Indicador de retrasos en el pago de suministros en hogares monoparentales 
+```{r}
+crear_tabla ("retrasos1", "monoparental", "Retrasos en el pago de suministros en hogares monoparentales", "Hogares monoparentales", 2)
+```
+
+#### Indicador de gasto desproporcionado energético (2M) en hogares monoparentales 
+
+```{r}
+crear_tabla ("TWO_M", "monoparental", "Gasto energético desproporcionado en hogares monoparentales", "Hogares monoparentales", 2)
+```
+
+#### Indicador de pobreza energética escondida (M/2) en hogares monoparentales 
+
+```{r}
+crear_tabla ("HEP", "monoparental", "Pobreza energética escondida en hogares monoparentales", "Hogares monoparentales", 2)
+```
+
+### Hogares con un miembro con discapacidad 
+Para el cálculo de esta variable utilizaremos la variable de la base de datos 'EINSFOESSA' de `discapacidad` que nos indica si en el núcleo familiar hay algún miembro con una discapacidad reconocida mediante certificado. 
+
+La variable `discapacidad` se crea a partir de la pregunta de la encuesta: 
+
+> C25: ¿Tiene certificado de discapacidad/ minusvalía?
+
+En primer lugar analizamos la variable y sus niveles: 
+
+```{r}
+levels(foessa2$discapacidad)
+```
+A continuación, recodificamos los nombres de los niveles para favorecer su interpretación: 
+
+```{r}
+foessa2$discapacidad <- fct_recode(foessa2$discapacidad, Sí ="Hogar con uno o más discapacitados según C25", No ="Hogar sin discapacitados según C25")
+
+levels(foessa2$discapacidad)
+
+```
+
+A partir de esta variable, podemos generar las siguientes tablas de contingencia. 
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "discapacidad", "Vulnerabilidad energética en hogares con algun miembro con discapacidad reconocida", "Miembros de la unidad familiar con una discapacidad reconocida", 2)
+```
+```{r}
+crear_grafico(x= discapacidad, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y diversidad funcional",
+              xtitle = "Hogares con algun miembro con discapacidad reconocida")
+```
+
+Vemos que, de entrada, la prevalencia de Vulnerabilidad energética - con alguno de sus indicadores - es casi 8 puntos superior en los hogares con un miembro con una discapacidad reconocida. 
+
+#### Temperatura inadecuada en el hogar en hogares con personas con discapacidad reconocida 
+```{r}
+crear_tabla("temp_adecuada", "discapacidad", "Temperatura inadecuada y diversidad funcional","hogares con algún miembro con una discapacidad reconocida",2)
+```
+
+#### Retrasos en el pago de suministros en hogares con personas con discapacidad reconocida 
+```{r}
+crear_tabla("retrasos1", "discapacidad", "Retrasos en el pago de suministros y diversidad funcional","hogares con algún miembro con una discapacidad reconocida",2 )
+```
+
+#### Gasto energético desproporcionado en hogares con personas con discapacidad reconocida 
+```{r}
+crear_tabla("TWO_M", "discapacidad", "Gasto energético desproporcionado y diversidad funcional","hogares con algún miembro con una discapacidad reconocida",2 )
+```
+
+
+#### Pobreza energética escondida en hogares con personas con discapacidad reconocida 
+```{r}
+crear_tabla("HEP", "discapacidad", "Pobreza energética escondida y diversidad funcional","hogares con algún miembro con una discapacidad reconocida",2 )
+```
+### Vulnerabilidad energética y colectivos minoritarios 
+
+En este apartado analizaremos la tabla de contingencia entre nuestro índice de vulnerabilidad energética y la pertenencia a algun grupo minoritario y, en concreto, los colectivos de población migrante extracomunitaria y la población gitana. Para hacerlo, utilizaremos la variable 'etnia' incorporada a la base de datos de EINSFOESSA que distribuye la muestra en tres categorías: población nacional o de la Unión Europea, población de origen extracomunitario y población gitana (sin diferenciar su nacionalidad). 
+
+```{r}
+
+crear_tabla("Vulnerabilidad_Energetica", "etnia", "Vulnerabilidad energética en hogares y colectivos minorizados", "Colectivos", 3)
+
+```
+A continuación, crearemos un gráfico para visualizar estos datos: 
+
+```{r}
+crear_grafico(x= etnia, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y colectivos minorizados",
+              xtitle = "Colectivos")
+```
+#### Temperatura inadecuada en el hogar y colectivos minorizados
+```{r}
+crear_tabla("temp_adecuada", "etnia", "Temperatura inadecuada y colectivos minorizados","Colectivos",3)
+
+```
+#### Retrasos en el pago de facturas y colectivos minorizados
+```{r}
+crear_tabla("retrasos1", "etnia", "Retrasos en el pago de facturas y colectivos minorizados","Colectivos",3)
+
+```
+
+#### Gasto energético desproporcionado y colectivos minorizados
+
+```{r}
+crear_tabla("TWO_M", "etnia", "Gasto energético desproporcionado y colectivos minorizados","Colectivos",3)
+
+```
+
+#### Pobreza energética escondida y colectivos minorizados 
+
+```{r}
+crear_tabla("HEP", "etnia", "Pobreza energética escondida y colectivos minorizados","Colectivos",3)
+
+```
+
+
+
+## Dimensión 2: Características socioeconómicas e indicadores relativos a ingresos familiares  
+
+### Vulnerabilidad Energética según quintil de renda 
+
+En este punto, a partir de la variable `ingresos_UC` correspondiente a los ingresos de la unidad de consumo, crearemos una nueva variable que dividirá a las observaciones de la base de datos en función del quintil de ingresos al cual corresponden: 
+
+```{r}
+foessa2$quintiles <-  cut(
+  foessa2$ingresos_UC,
+  breaks = quantile(foessa2$ingresos_UC, c(0, 0.2, 0.4, 0.6, 0.8, 1), na.rm = TRUE),
+  labels = c("Quintil 1", "Quintil 2", "Quintil 3", "Quintil 4", "Quintil 5"),
+  right  = FALSE,
+  include.lowest = TRUE
+)
+
+```
+
+Una vez tenemos creada la nueva variable de quintiles de renda, podemos generar tablas de contingencia a partir de las variables de interés para los distintos indicadores. 
+
+En este primer apartado nos centraremos en la variable agregada `PE` y posteriormente veremos los indicadores desagregados. 
+
+```{r}
+crear_tabla ("Vulnerabilidad_Energetica", "quintiles", "Vulnerabilidad energética y nivel de renda", "Quintil de renda de la unidad familiar", 5)
+
+```
+```{r}
+crear_grafico(x = quintiles, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética según renda familiar", 
+              xtitle = "Quintil de renda de la unidad familiar")
+```
+
+
+#### Indicador de temperatura adecuada segun quintiles de renda 
+
+```{r}
+crear_tabla ("temp_adecuada", "quintiles", "Temperatura adecuada y nivel de renda", "Quintil de renda de la unidad familiar", 5)
+```
+
+#### Indicador de retrasos en el pago de facturas de suministros segun quintiles de renda 
+
+```{r}
+crear_tabla ("retrasos1", "quintiles", "Retrasos en el pago de suministros y nivel de renda", "Quintil de renda de la unidad familiar", 5)
+```
+
+#### Indicador de gasto desproporcionado (2M) segun quintiles de renda 
+
+```{r}
+crear_tabla ("TWO_M", "quintiles", "Gasto energético desproporcionado y nivel de renda", "Quintil de renda de la unidad familiar", 5)
+```
+
+#### Indicador de Pobreza Energética Escondida (M/2) segun quintiles de renda 
+
+```{r}
+crear_tabla ("HEP", "quintiles", "Pobreza energética escondida y nivel de renda", "Quintil de renda de la unidad familiar", 5)
+```
+
+### Vulnerabilidad y precariedad energética en función de la situación de ocupación de la persona de referencia del hogar
+Un segundo indicador relevante en relación con la dimensión económica es el impacto de pobreza energética en función de la situación de ocupación de la persona de referencia del hogar. Para analizar esta relación, usaremos la variable `ppalocupacion`.
+
+```{r}
+
+foessa2$ppalocupacion <- fct_recode(foessa2$ppalocupacion, 
+                    "Trabaja" ="Trabajando", 
+                    "(pre)Jubilación" = "Percibía p. jubilacion o ingresos prejubilacion", 
+                    "Parado" = "Buscando empleo", 
+                    "Otros" = "Otras situaciones")
+
+
+crear_tabla("Vulnerabilidad_Energetica", "ppalocupacion", "Vulnerabilidad energética en función de la situación de ocupación", "Situación de ocupación de la persona de referencia del hogar", 4)
+```
+```{r}
+crear_grafico(ppalocupacion, 
+              Vulnerabilidad_Energetica, 
+              "Vulnerabilidad energética en función de la situación de ocupación", 
+              "Situación de ocupación de la persona de referencia del hogar")
+```
+
+#### Indicador de temperatura inadecuada en el hogar en función de la situación de ocupación de la persona de referencia
+
+```{r}
+crear_tabla("temp_adecuada", "ppalocupacion", "Temperatura adecuada en el hogar en función de la situación de ocupación", "Situación de ocupación de la persona de referencia del hogar", 4)
+```
+
+#### Indicador de retrasos en el pago de facturas en función de la situación de ocupación de la persona de referencia
+
+```{r}
+crear_tabla("retrasos1", "ppalocupacion", "Retrasos en el pago de suministros en función de la situación de ocupación", "Situación de ocupación de la persona de referencia del hogar", 4)
+```
+
+#### Indicador de gasto desproporcionado (2M) en función de la situación de ocupación de la persona de referencia
+
+```{r}
+crear_tabla("TWO_M", "ppalocupacion", "Gasto energético desproporcionado en función de la situación de ocupación", "Situación de ocupación de la persona de referencia del hogar", 4)
+```
+
+#### Indicador de pobreza energética escondida (2/M) en función de la situación de ocupación de la persona de referencia
+
+```{r}
+crear_tabla("HEP", "ppalocupacion", "Pobreza energética escondida en función de la situación de ocupación", "Situación de ocupación de la persona de referencia del hogar", 4)
+```
+
+### Vulnerabilidad y vulnerabilidad energética en función de la autopercepción de clase social 
+
+La encuesta EINSFOESSA incluye una pregunta en su cuestionario a partir de la cual podemos analizar la auto-percepción de los hogares en relación a su clase social: 
+
+> Pregunta E.70 ¿Cómo calificaría a su hogar teniendo en cuenta la situación económica del mismo durante los últimos 12 meses (o, en su caso, en los que lleva constituido el hogar)?
+
+Las respuestas posibles a esta pregunta, y que configuran la variable `clase_subjetiva` son:
+
+```{r}
+levels(foessa2$clase_subjetiva)
+```
+Con esta variable, podemos ver como se distribuye la población afectada por alguno de los indicadores de pobreza energética en función de su autopercepción de clase: 
+
+```{r}
+foessa2$clase_subjetiva <- fct_recode(foessa2$clase_subjetiva, 
+                                      "Clase alta" = "Rico", 
+                                      "Clase alta" = "Por encima de la media", 
+                                      "Clase media" = "En la media", 
+                                      "Clase trabajadora" = "Por debajo de la media", 
+                                      "Clase trabajadora" = "Casi pobre", 
+                                      "Clase muy baja" = "Pobre")
+
+crear_tabla("Vulnerabilidad_Energetica", "clase_subjetiva", "Vulnerabilidad energética y clase social subjetiva", "Autopercepción de la clase social", 4)
+```
+```{r}
+crear_grafico(clase_subjetiva, 
+              Vulnerabilidad_Energetica, 
+              "Vulnerabilidad energética y clase social subjetiva", 
+              "Autopercepción de la clase social")
+```
+
+
+#### Temperatura inadecuada en función de la clase social subjetiva 
+
+```{r}
+crear_tabla("temp_adecuada", "clase_subjetiva", "Temperatura adecuada y clase social subjetiva", "Autopercepción de la clase social", 4)
+```
+
+#### Retrasos en el pago de suministros en función de la clase social subjetiva 
+
+```{r}
+crear_tabla("retrasos1", "clase_subjetiva", "Retrasos en el pago de suministros y clase social subjetiva", "Autopercepción de la clase social", 4)
+```
+
+#### Gasto energético desproporcionado en función de la clase social subjetiva 
+
+```{r}
+crear_tabla("TWO_M", "clase_subjetiva", "Gasto energético desproporcionado y clase social subjetiva", "Autopercepción de la clase social", 4)
+```
+
+#### Pobreza energética escondida en función de la clase social subjetiva 
+
+```{r}
+crear_tabla("HEP", "clase_subjetiva", "Pobreza energética escondida y clase social subjetiva", "Autopercepción de la clase social", 4)
+```
+
+## Dimensión 3: Características de la vivienda
+
+### Avisos por impagos 
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "avisos_cortes", "Vulnerabilidad energética y avisos de cortes de suministros", "Avisos por cortes de suministros", 2)
+
+```
+
+### Vulnerabilidad y precariedad energética y rehabilitación de la vivienda 
+
+```{r}
+# Creamos una primera variable que nos indique si el hogar necesita o no rehabilitación
+foessa2 <- foessa2 %>% mutate(rehab = case_when(
+                                      necesidad_vivienda == "Necesitan rehabilitar la vivienda actual" ~ "Necesita rehabilitación", 
+                                      TRUE ~ "No necesita rehabilitación"
+))
+
+foessa2$rehab <- as.factor(foessa2$rehab)
+tabla_indicador(foessa2$rehab, "Necesidad de rehabilitación")
+
+```
+
+Si cruzamos lel indicador  de vulnerabilidad energética y la nueva variable de rehabilitación, obtenemos los siguientes datos: 
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "rehab", "Vulnerabilidad energética y rehabilitación", "Necesidad de rehabilitación de la vivienda", 2)
+```
+
+De los resultados obtenidos en la tabla, podemos apreciar que, aunque el porcentaje total de viviendas que necesitan rehabilitación es bajo (sólo un 7,5% de los hogares de la muestra), estos están más severamente impactados niveles altos de vulnerabilidad energética. 
+
+```{r}
+crear_grafico(rehab, Vulnerabilidad_Energetica, "Vulnerabilidad energética y rehabilitación", "Necesidad de rehabilitación")
+```
+
+En este punto, nos interesa analizar qué tipo de intervenciones de rehabilitación son necesarias en los hogares que así lo han expresado. Para ello crearemos una nueva variable: 
+
+```{r}
+#Creación de una nueva variable sobre el tipo de rehabilitción (relevante en términos de precariedad energética)
+foessa2 <- foessa2 %>% mutate(rehab_tipo = 
+                                case_when(rehab == "Necesita rehabilitación" & rehab_cocina == "Sí" ~ "Cocina", 
+                                          rehab == "Necesita rehabilitación" & rehab_baño == "Sí" ~ "Baño",
+                                          rehab == "Necesita rehabilitación" & rehab_instal == "Sí" ~ "Instalaciones",
+                                          rehab == "Necesita rehabilitación" & rehab_calef == "Sí" ~ "Calefacción",
+                                          rehab == "Necesita rehabilitación" & rehab_ventana == "Sí" ~ "Ventana",
+                                          rehab == "Necesita rehabilitación" & rehab_tabiques == "Sí" ~ "Tabiques",
+                                          rehab == "Necesita rehabilitación" & rehab_suelo == "Sí" ~ "Suelo",
+                                          rehab == "Necesita rehabilitación" & rehab_barreras == "Sí" ~ "Barreras arquitectónicas",
+                                          rehab == "No necesita rehabilitación" ~ "No necesita rehabilitación",
+                                          TRUE ~ "Otros"))
+
+
+foessa2$rehab_tipo <- as.factor(foessa2$rehab_tipo)
+summary(foessa2$rehab_tipo)
+```
+Una vez hemos creado esta variable, podemos analizar el impacto de la Vulnerabilidad energética en función del tipo de rehabilitación necesaria: 
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "rehab_tipo", "Vulnerabilidad energética y tipo de rehabilitación", "Tipo de rehabilitación necesaria", 10)
+```
+Podemos apreciar que los casos más evidentes de necesidades de rehabilitación en situaciones de vulnerabilidad energética son: 
+* Rehabilitación de instalaciones de calefacción (95,12% de la población que necesita rehabilitación de la calefacción se encuentra en situación de PE)
+* Rehabilitación para la adecuación y eliminación de barreras arquitectónicas (78.79% de la población que necesita rehabilitación relacionada con barreras arquitectónicas se encuentra en situación de PE)
+* Rehabilitación de la cocina (78.08% de la población que necesita rehabilitación de la cocina se encuentra en situación de PE)
+
+Además, puede apuntarse la rehabilitación de tabiques (tirar o levantar tabiques), aunque no la destacamos por la baja muestra. 
+
+### Vulnerabilidad energética y estado del hogar
+
+```{r}
+# Variable sobre deficiencias del hogar: 
+
+levels(foessa2$insalubridad) # Variable sobre insalubridad en el hogar 
+levels(foessa2$ruina)# Variable sobre si el hogar se encuentra en estado de ruina 
+
+# Construcción de la variable sobre deficiencias del hogar 
+foessa2 <- foessa2 %>% mutate("def_hogar" = case_when(
+  insalubridad == "Sí" ~ "Sí",
+  insalubridad == "No" ~ "No", 
+  ruina == "Sí" ~ "Sí", 
+  ruina == "No" ~ "No", 
+  TRUE ~ "No"
+))
+
+
+crear_tabla("Vulnerabilidad_Energetica", "def_hogar", "Vulnerabilidad energética y deficiencias en el hogar", "Avisos por cortes de suministros", 2)
+
+```
+
+
+
+### Vulnerabilidad y precariedad energética en función de si el hogar dispone o no de calefacción 
+
+Este indicador corresponde con un indicador de caracterización incluído en la Estrategia Nacional contra la Pobreza Energética. 
+
+```{r}
+crear_tabla ("Vulnerabilidad_Energetica", "dispone_calef", "Vulnerabilidad energética y disponibilidad de calefacción", "Disponibilidad de calefacción", 2)
+```
+
+#### Indicador de temperatura inadecuada en hogares en función de la disponibilidad de calefacción 
+
+```{r}
+crear_tabla ("temp_adecuada", "dispone_calef", "Temperatura adecuada del hogar y disponibilidad de calefacción", "Disponibilidad de calefacción", 2)
+```
+
+#### Indicador de retrasos en el pago de suministros en hogares en función de la disponibilidad de calefacción  
+
+```{r}
+crear_tabla ("retrasos1", "dispone_calef", "Retrasos en el pago de suministros y disponibilidad de calefacción", "Disponibilidad de calefacción", 2)
+```
+
+#### Indicador de gasto desproporcionado energético (2M) en hogares en función de la disponibilidad de calefacción  
+
+```{r}
+crear_tabla ("TWO_M", "dispone_calef", "Gasto energético desproporcionado y disponibilidad de calefacción", "Disponibilidad de calefacción", 2)
+```
+
+#### Indicador de pobreza energética escondida (M/2) en hogares en función de la disponibilidad de calefacción   
+
+```{r}
+crear_tabla ("HEP", "dispone_calef", "Pobreza energética escondida y disponibilidad de calefacción", "Disponibilidad de calefacción", 2)
+```
+
+### Vulnerabilidad energética y disponibilidad de servicios y equipamiento en la vivienda 
+
+En este apartado, analizaremos el impacto de PE en relación con la disponibilidad de diferentes servicios y dispositivos en la vivienda. Los servicios seleccionados son: 
+* Suministros básicos: agua corriente, agua caliente y suministro de electricidad 
+* Instalaciones básicas: cocina y baño completo en la vivienda.  
+* Electrodomésticos básicos como lavadora y frigorífico 
+* Servicio de comunicaciones a través de connexión a internet, tv y ordenador 
+
+Para mostrar los datos disponibles, los resumiremos en el siguiente gráfico: 
+
+```{r}
+df <- foessa2 %>% select (starts_with("dispone"), PE)
+names(df)
+```
+
+```{r}
+
+# Modificar los datos para que sean largos 
+
+df_long <- gather(df, key="measure", value="value", c("dispone_agua","dispone_agua_cal", "dispone_elect", "dispone_calef", "dispone_baño", "dispone_cocina", "dispone_frigo", "dispone_lava", "dispone_pc", "dispone_internet", "dispone_tv"))
+
+
+# Creamos el nombre de variables 
+variable_names <- list(
+  "dispone_agua" = "Agua corriente" ,
+  "dispone_agua_cal" = "Agua caliente", 
+  "dispone_elect" = "Electricidad", 
+  "dispone_calef" = "Calefacción", 
+  "dispone_baño" = "Baño", 
+  "dispone_cocina" = "Cocina",  
+  "dispone_frigo" = "Frigorífico", 
+  "dispone_lava" = "Lavadora", 
+  "dispone_pc" = "Ordenador", 
+  "dispone_internet" = "Internet", 
+  "dispone_tv" = "TV"
+)
+
+variable_labeller <- function(variable,value){
+  return(variable_names[value])
+}
+
+
+
+# Creamos el gráfico 
+df_long %>% filter(!(value %in% NA)) %>%
+  ggplot(aes(x=PE, y=value, fill = value))+
+  geom_bar(stat='identity', position = "stack")+
+  geom_col (position = position_dodge2(preserve = "single"))+
+  facet_wrap(~ measure, ncol=3, labeller=variable_labeller) + 
+  labs(x = "Vulnerabilidad energética", y = "Porcentaje de población", fill = "Disponibilidad") +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_text(colour="dodgerblue4", size=8, face="bold"))
+
+
+
+```
+
+### Vulnerabilidad energética y régimen de tenencia 
+
+En primer lugar, recodificaremos la variable tenencia, que en su forma inicial está formada por 11 categorías, para simplificar su interpretación. Para hacerlo, reducimos y agrupamos las 11 categorías anteriores en 4 categorías. 
+
+```{r}
+foessa2 <- foessa2 %>% mutate("tenencia_rec" = case_when(
+  tenencia == "Por compra, totalmente pagada" ~ "Propiedad", 
+  tenencia == "Por compra, por pagos pendientes" ~ "Propiedad", 
+  tenencia == "Por herencia o donación" ~ "Propiedad", 
+  tenencia == "Por otras personas hogares o instituciones" ~ "Gratuita/Semigratuita", 
+  tenencia == "Por patrón/empresa por razón de trabajo" ~ "Gratuita/Semigratuita",
+  tenencia == "Particular, con muebles" ~ "Alquiler",
+  tenencia == "Particular, sin muebles" ~ "Alquiler",
+  tenencia == "Realquilada" ~ "Alquiler",
+  tenencia == "Alquiler social" ~ "Alquiler",
+  tenencia == "Otras" ~ "Otras",
+  tenencia == "Ocupada ilegalmente" ~ "Otras"
+))
+
+foessa2$tenencia_rec <- as.factor(foessa2$tenencia_rec)
+summary(foessa2$tenencia_rec)
+
+```
+
+Una vez realizada la recodificación, vemos que obtenemos cuatro categorías (Alquiler, Gratuita o semigratuita, Propiedad y Otras) y, residualmente, vemos que hay 54 casos perdidos. A partir de aquí, con nuestra nueva variable recodificada, podremos analizar los datos y crear las tablas de contingencia para su posterior interpretación. 
+
+
+```{r}
+
+crear_tabla("Vulnerabilidad_Energetica", "tenencia_rec", "Vulnerabilidad energética y avisos de cortes de suministros", "Avisos por cortes de suministros", 4)
+
+```
+Los datos presentados en la tabla indican que la población en regimen de alquiler tiene una mayor probabilidad de estar en situación de vulnerabilidad. Del total de población en situación de alta vulnerabilidad energética, el 53.74% viven en regimen de alquiler. 
+ 
+```{r}
+crear_grafico(tenencia_rec, 
+              Vulnerabilidad_Energetica, 
+              "Vulnerabilidad energética en función del regimen de tenencia de la vivienda", 
+              "Regimen de tenencia")
+```
+ 
+### Vulnerabilidad energética y tipo de alojamiento
+
+```{r}
+summary(foessa2$alojamiento_rec)
+
+foessa2$alojamiento_rec <- fct_recode(foessa2$alojamiento,
+                                      Otros = "Chabola", 
+                                      Otros = "Cueva", 
+                                      Otros = "Barracón, prefabricado o similar", 
+                                      Otros = "Otras", 
+                                      Otros = "Bajera, garaje"
+                                      )
+
+crear_tabla("Vulnerabilidad_Energetica", "alojamiento_rec", "Vulnerabilidad energética y tipo de alojamiento", "Tipo de alojamiento", 3)
+```
+```{r}
+crear_grafico(x = alojamiento_rec, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética según tipo de alojamiento", 
+              xtitle = "Tipo de alojamiento")
+```
+
+
+ 
+## Dimensión 4: Características del entorno urbano
+
+### Vulnerabilidad energética y tipo de barrio
+
+```{r}
+
+summary(foessa2$barrio)
+
+crear_tabla("Vulnerabilidad_Energetica", "barrio", "Vulnerabilidad energética y avisos de cortes de suministros", "Avisos por cortes de suministros", 4)
+
+```
+
+```{r}
+crear_grafico(x = barrio_dummy, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética según tipo de barrio", 
+              xtitle = "Tipo de barrio")
+```
+
+### Vulnerabilidad energética y tamaño del municipio 
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "tamano_municipio", "Vulnerabilidad energética y tamaño del municipio", "Tamaño del municipio", 5)
+```
+
+```{r}
+crear_grafico(x = tamano_municipio, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética según tamaño del municipio", 
+              xtitle = "Tamaño del municipio")
+```
+
+### Vulnerabilidad energética y entorno degradado
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "entorno_degradado", "Vulnerabilidad energética y degradación del entorno", "Entorno degradado", 2)
+```
+
+```{r}
+crear_grafico(x = entorno_degradado, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y degradación del entorno", 
+              xtitle = "Entorno degradado")
+```
+
+### Vulnerabilidad energética y conflictividad 
+
+```{r}
+levels(foessa2$barrio_conflictivo)
+
+crear_tabla("Vulnerabilidad_Energetica", "barrio_conflictivo", "Vulnerabilidad energética y conflictividad del barrio", "Barrio conflictivo", 2)
+
+```
+```{r}
+crear_grafico(x = barrio_conflictivo, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y conflictividad del barrio", 
+              xtitle = "Barrio conflictivo")
+```
+
+## Dimensión 5: Impactos sobre la salud y relaciones sociales 
+
+### Salud 
+```{r}
+#Comprobación de niveles de la variable salud 
+levels(foessa2$salud)
+
+# Simplificación de categorias de la variable salud
+foessa2$salud_rec <- fct_recode(foessa2$salud, 
+                                "Buena o muy buena" = "Muy buena", 
+                                "Buena o muy buena" = "Bastante buena", 
+                                Regular = "Regular", 
+                                "Mala o muy mala" = "Más bien mala", 
+                                "Mala o muy mala" = "Francamente mala")
+summary(foessa2$salud_rec)
+
+crear_tabla("Vulnerabilidad_Energetica", "salud_rec", "Vulnerabilidad energética y salud", "Estado de salud", 3)
+
+```
+```{r}
+crear_grafico(x = salud_rec, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y salud", 
+              xtitle = "Estado de salud")
+```
+
+### Reducción del gasto en alimentación 
+
+```{r}
+levels(foessa2$reducir_galim)
+
+crear_tabla("Vulnerabilidad_Energetica", "reducir_galim", "Vulnerabilidad energética y reducción del gasto en alimentación", "Reducción del gasto en alimentación", 2)
+
+```
+```{r}
+crear_grafico(x = reducir_galim, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y reducción del gasto en alimentación", 
+              xtitle = "Reducción del gasto en alimentación")
+```
+
+### Reducción del gasto en ocio 
+
+```{r}
+levels(foessa2$reducir_galim)
+
+crear_tabla("Vulnerabilidad_Energetica", "reducir_ocio", "Vulnerabilidad energética y reducción del gasto en ocio", "Reducción del gasto en ocio", 2)
+
+```
+```{r}
+crear_grafico(x = reducir_ocio, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y reducción del gasto en ocio", 
+              xtitle = "Reducción del gasto en ocio")
+```
+
+
+### Pérdida de relaciones sociales 
+
+```{r}
+levels(foessa2$barrio_conflictivo)
+
+crear_tabla("Vulnerabilidad_Energetica", "perdida_relaciones", "Vulnerabilidad energética y pérdida de relaciones sociales", "Pérdida de relaciones sociales ", 2)
+
+```
+```{r}
+crear_grafico(x = perdida_relaciones, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y pérdida de relaciones sociales", 
+              xtitle = "Pérdida de relaciones sociales")
+```
+
+### Dieta inadecuada  
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "dieta_inadec", "Vulnerabilidad energética y dieta inadecuada", "Dieta inadecuada", 2)
+
+```
+```{r}
+crear_grafico(x = dieta_inadec, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y dieta inadecuada", 
+              xtitle = "Dieta inadecuada")
+```
+
+
+# Prueba de hipótesis de independencia estadística entre variables
+
+En este apartado avanzamos en en analísis estadístico descriptivo, y analizaremos la relación entre variables. En el caso concreto que nos ocupa, como hemos podido apreciar, trabajamos fundamentalmente con tablas de contingencia para poner en relación variables categóricas.
+
+Con este tipo de variables, podemos verificar si existe algun tipo de relación entre  variables comparando los datos observados en nuestra muestra con una tabla ideal que representa la distribución  recíproca que tendrían esas variables si estuvieran distribuidas al azar. Esta tabla (que es una creación estadística) la llamamos *modelo de independencia* y nos indica la forma que tendrían los conteos si las variables fueran independientes. Para obtener el estadístico usamos la formula χ2 (Chi cuadrado). Al aplicar una prueba de hipótesis de independencia estadística para una tabla de contingencia estaremos estimando la probabilidad de nuestra tabla, dada la hiótesis de independencia entre filas y columnas. 
+
+Para poder interpretar los datos que presentamos a continuación debemos tener en cuenta que la *prueba de hipótesis* sólo no sinforma sobre la probabilidad de nuestros datos dada una hipótesis de nulidad. Debe tenerse en cuenta que rechazar la hipótesis de nulidad no afirma automáticamente nuestra hipótesis ni tampoco nos da información sobre la calidad de la hipótesis de nulidad. 
+
+Tal como apunta Sharpe (2015), en muchas ocasiones, los científicos sociales sólo llegan hasta el test de independencia pero no van más allá. En esta investigación, complementaremos el test de independencia junto con un *análisis de residuos* que nos permitirá discernir entre qué categorías se da la asociación, en caso que se detecte una relación significativa entre variables.
+
+Finalmente, nos interesará conocer la intensidad de esa relación y su direccionalidad. Para ello calcularemos la *razón de momios* u *odds ratio* que nos dará información sobre la intensidad de la asociación entre las variables analizadas. 
+
+
+## Vulnerabilidad Energética y Quintiles de Renda 
+
+```{r}
+t1 <- table(foessa2$Vulnerabilidad_Energetica,foessa2$quintiles)
+
+ggplot(data = foessa2) +
+  geom_mosaic(aes(x = product(Vulnerabilidad_Energetica, quintiles), fill=Vulnerabilidad_Energetica), na.rm = TRUE) +
+  labs(x="Quintiles de renda", 
+       y= "Vulnerabilidad energética", 
+       title='Vulnerabilidad energética por quintiles')
+```
+
+A continuación ejecutaremos la prueba de independencia en relación a la hipótesis nula "No existe relación entre el nivel de vulnerabilidad energética y el nivel de renda" y también analizaremos la medida de asociación a través del test V de Cramer: 
+
+```{r}
+chisq1 <- chisq.test(t1)  #Relación significativa
+chisq1 # 2.2e-16
+assocstats(t1)
+
+```
+Por una parte vemos que la relación entre ambas variables es significativa, por lo que rechazamos la hipótesis nula. Por otra parte, vemos que la prueba de V de Cramer nos indica una medida de asociación de 0.24, tratándose de una medida baja.
+
+A continuación, podemos visualizar los residuos de Pearson que hemos extraído a través de la prueba de Chi Cuadrado, para ver qué interacciones contribuyen en mayor medida al cálculo del estadístico. 
+
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+corrplot(chisq1$residuals, 
+         type = "upper", 
+         tl.col= "black", 
+         tl.srt = 45, 
+         is.cor = FALSE, 
+         method = "square", 
+         addCoef.col = "blue", 
+         tl.cex = 0.9)
+```
+
+## Vulnerabilidad Energética y Características familiares 
+
+### Creamos una variable general sobre características familiares de vulnerabilidad 
+
+```{r}
+foessa2 <- foessa2 %>% mutate(vuln_familiar = case_when(
+  anciano == "Sí" ~ "Sí", 
+  dos_adult_65 == "Sí" ~ "Sí", 
+  discapacidad == "Sí" ~ "Sí",
+  TRUE ~ "No"
+))
+
+foessa2$vuln_familiar <- as.factor(foessa2$vuln_familiar)
+summary(foessa2$vuln_familiar)
+
+```
+
+
+```{r}
+t1 <- table(foessa2$Vulnerabilidad_Energetica,foessa2$vuln_familiar)
+
+ggplot(data = foessa2) +
+  geom_mosaic(aes(x = product(Vulnerabilidad_Energetica, vuln_familiar), fill=Vulnerabilidad_Energetica), na.rm = TRUE) +
+  labs(x="Vulnerabilidad familiar", 
+       y= "Vulnerabilidad energética", 
+       title='Vulnerabilidad energética y características familiares de vulnerabilidad')
+```
+
+A continuación ejecutaremos la prueba de independencia en relación a la hipótesis nula "No existe relación entre el nivel de vulnerabilidad energética y el nivel de renda" y también analizaremos la medida de asociación a través del test V de Cramer: 
+
+```{r}
+chisq1 <- chisq.test(t1)  #Relación significativa
+chisq1 #< 6.362e-07
+assocstats(t1)
+
+```
+Por una parte vemos que la relación entre ambas variables es significativa, por lo que rechazamos la hipótesis nula. Por otra parte, vemos que la prueba de V de Cramer nos indica una medida de asociación de 0.08, tratándose de una medida muy baja. 
+
+A continuación, podemos visualizar los residuos de Pearson que hemos extraído a través de la prueba de Chi Cuadrado, para ver qué interacciones contribuyen en mayor medida al cálculo del estadístico. 
+
+```{r}
+corrplot(chisq1$residuals, 
+         type = "upper", 
+         tl.col= "black", 
+         tl.srt = 45, 
+         is.cor = FALSE, 
+         method = "square", 
+         addCoef.col = "blue", 
+         tl.cex = 0.9)
+```
+
+
+
+
+
