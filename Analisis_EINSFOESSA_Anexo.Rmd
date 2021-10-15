@@ -1078,6 +1078,7 @@ crear_tabla("TWO_M", "discapacidad", "Gasto energético desproporcionado y diver
 ```{r}
 crear_tabla("HEP", "discapacidad", "Pobreza energética escondida y diversidad funcional","hogares con algún miembro con una discapacidad reconocida",2 )
 ```
+
 ### Vulnerabilidad energética y colectivos minoritarios 
 
 En este apartado analizaremos la tabla de contingencia entre nuestro índice de vulnerabilidad energética y la pertenencia a algun grupo minoritario y, en concreto, los colectivos de población migrante extracomunitaria y la población gitana. Para hacerlo, utilizaremos la variable 'etnia' incorporada a la base de datos de EINSFOESSA que distribuye la muestra en tres categorías: población nacional o de la Unión Europea, población de origen extracomunitario y población gitana (sin diferenciar su nacionalidad). 

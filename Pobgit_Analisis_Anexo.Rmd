@@ -83,6 +83,7 @@ dim(pobgit) # Nos dice el número de filas/observaciones (1492) y las variables 
 
 ```
 
+
 Una vez se ha estudiado la estructura de la base de datos, debemos transformar las variables en factores (categóricas) o en números (numéricas) y explorar los niveles factoriales de las mismas. Cómo vemos, hay 317 variables pero no es estrictamente cierto ya que muchas de ellas son categorias de variables existentes separadas como variables categóricas con opción sí/no, o 1-0. Para que el software R no entienda que esos 1 y 0 son números, sino categorías, deben transformarse en factores. 
 
 Ahora bien, no podemos optar por una transformación masiva de todas las variables ya que pueden haber diversas de ellas que sean númericas. Para ello, como primer paso del análisis deberemos identificarlas. 
@@ -93,7 +94,13 @@ Primero convertiremos todas las variables de "character" a factores, posteriorme
 # Creamos una tabla 'tibble' para facilitar la manipulación de los datos 
 pobgit2 <- as.tibble (pobgit)
 
-print(pobgit2)
+
+# Renombramos algunas de las variables que usaremos con mayor asiduidad 
+pobgit2 <- pobgit2 %>% rename(
+   temp_adecuada = P51_3, 
+   retrasos = P51_5
+ )
+
 
 # Creamos una función de limpieza de datos factoriales mixtos a numéricos 
 
@@ -122,12 +129,10 @@ pobgit2$A9_num <- limp_factor_mixto(pobgit2$A9)
 
     #A8_1: Salarios 
     pobgit2$A8_1_num <- limp_factor_mixto(pobgit2$A8_1)
-    print (pobgit2$A8_1_num)
     
     #A8_2: Pensiones 
     pobgit2$A8_2_num <- limp_factor_mixto(pobgit2$A8_2)
-    print(pobgit2$A8_2_num)
-    
+
     #A8_3: Desempleo 
     pobgit2$A8_3_num <- limp_factor_mixto(pobgit2$A8_3)
     
@@ -169,7 +174,38 @@ pobgit2$ing_hogar_total <- ifelse(pobgit2$ing_hogar_conc > pobgit2$A9_num, pobgi
 pobgit2 %>%  select(A9_num, ing_hogar_conc, ing_hogar_total) %>% print() # Comprobamos que el resultado final es aquel que esperamos comparando los datos de la variable A9, la variable creada de ingresos por conceptos, y finalmente nuestra nueva variable del total de ingresos del hogar
 
 ```
-### Cálculo de la renta equivalente por unidad de consumo 
+
+## Variables y datos referentes a la edad
+En primer lugar, crearemos una función propia de limpieza para los datos disponibles sobre la edad de los miembros de la unidad familiar. En este caso, nuestro objetivo será mantener los datos perdidos (NA) en aras de diferenciar el tamaño de cada unas de las unidades familiares incluídas en la base de datos. 
+
+```{r}
+#Creamos función para limpiar las variables sobre edad, en las que queremos que se mantengan las NA
+
+limp_factor_mixto2 <- function(X){
+  var_z <- as.character(X)
+  pobgit2 %>% mutate(var_z = case_when(var_z %in% c("No", "NS", "NC") ~ "0", 
+                                         TRUE ~ var_z))
+  var_z <- as.numeric(var_z)
+  #var_z[is.na(var_z)] <- 0
+  return(var_z)
+}
+
+#Limpiar las variables referentes a la edad  
+pobgit2$A1_04_num <- limp_factor_mixto2(pobgit2$A1_04)
+pobgit2$A2_04_num <- limp_factor_mixto2(pobgit2$A2_04)
+pobgit2$A3_04_num <- limp_factor_mixto2(pobgit2$A3_04)
+pobgit2$A4_04_num <- limp_factor_mixto2(pobgit2$A4_04)
+pobgit2$A5_04_num <- limp_factor_mixto2(pobgit2$A5_04)
+pobgit2$A6_04_num <- limp_factor_mixto2(pobgit2$A6_04)
+pobgit2$A7_04_num <- limp_factor_mixto2(pobgit2$A7_04)
+pobgit2$A8_04_num <- limp_factor_mixto2(pobgit2$A8_04)
+pobgit2$A9_04_num <- limp_factor_mixto2(pobgit2$A9_04)
+pobgit2$A10_04_num <- limp_factor_mixto2(pobgit2$A10_04)
+
+str(pobgit2$A1_04_num) #Comprobamos una de las variables numéricas creadas 
+```
+
+## Cálculo de la renta equivalente por unidad de consumo 
 Con el objetivo de obtener datos comparables, nuestro objetivo será obtener datos a nivel de población. Esta tarea presenta cierta dificultad, en tanto la base de datos utiliza la unidad familiar como unidad de análisis. Para facilitar la conversión y comparabilidad de los datos hemos optado por calcular el ingreso equivalente de todos los miembros de la unidad familiar. 
 
 El primer paso para realizar este cálculo será calcular los ingresos de la unidad familiar utilizando como referencia la escala de equivalencia "OCDE Modificada". Esta escala de equivalencia nos permite asignar un valor, de forma ponderada, a cada miembro de la unidad familiar en función de la edad del mismo. De esta manera, al calcular los ingresos del hogar pueden tenerse en cuenta aspectos como las economías de escala en el consumo y el crecimiento no lineal de necesidades de consumo en unidades familiares de distintas dimensiones y características. 
@@ -186,6 +222,7 @@ peso_variable_oecd <- function(x){
   y <- ifelse(x >= 16, "0.5", ifelse(x < 16, "0.3", "0"))
   y <- as.numeric(y)
 }
+
 
 #Calculaamos el peso de cada miembro de la unidad familiar en cada caso 
 pobgit2$A1_04_oecd <- peso_variable_oecd(pobgit2$A1_04_num)
@@ -223,35 +260,6 @@ summary(pobgit2$quintiles_ingresos)
 ```
 
 
-## Variables y datos referentes a la edad
-En primer lugar, crearemos una función propia de limpieza para los datos disponibles sobre la edad de los miembros de la unidad familiar. En este caso, nuestro objetivo será mantener los datos perdidos (NA) en aras de diferenciar el tamaño de cada unas de las unidades familiares incluídas en la base de datos. 
-
-```{r}
-#Creamos función para limpiar las variables sobre edad, en las que queremos que se mantengan las NA
-
-limp_factor_mixto2 <- function(X){
-  var_z <- as.character(X)
-  pobgit2 %>% mutate(var_z = case_when(var_z %in% c("No", "NS", "NC") ~ "0", 
-                                         TRUE ~ var_z))
-  var_z <- as.numeric(var_z)
-  #var_z[is.na(var_z)] <- 0
-  return(var_z)
-}
-
-#Limpiar las variables referentes a la edad  
-pobgit2$A1_04_num <- limp_factor_mixto2(pobgit2$A1_04)
-pobgit2$A2_04_num <- limp_factor_mixto2(pobgit2$A2_04)
-pobgit2$A3_04_num <- limp_factor_mixto2(pobgit2$A3_04)
-pobgit2$A4_04_num <- limp_factor_mixto2(pobgit2$A4_04)
-pobgit2$A5_04_num <- limp_factor_mixto2(pobgit2$A5_04)
-pobgit2$A6_04_num <- limp_factor_mixto2(pobgit2$A6_04)
-pobgit2$A7_04_num <- limp_factor_mixto2(pobgit2$A7_04)
-pobgit2$A8_04_num <- limp_factor_mixto2(pobgit2$A8_04)
-pobgit2$A9_04_num <- limp_factor_mixto2(pobgit2$A9_04)
-pobgit2$A10_04_num <- limp_factor_mixto2(pobgit2$A10_04)
-
-str(pobgit2$A1_04_num) #Comprobamos una de las variables numéricas creadas 
-```
 # Herramientas metodológicas: funciones propias y preparación de código por defecto 
 
 En este apartado se definen las herramientas de estadística descriptiva básica que nos servirán para el análisis de datos posterior. Para ellos hemos creado funciones propias para la creación y construcción de tablas de frecuencia, tablas de contingencia y visualización gráfica de datos. 
@@ -316,20 +324,20 @@ tabla_indicador <- function(x,t){
     z
 }
 
-#tabla_indicador(x = pobgit2$temp_adecuada, #variable con marcador $ 
-#                t = "Temperatura adecuada") # Título de la tabla (nombre del indicador)
+#tabla_indicador(x = pobgit_temp$temp_adecuada, #variable con marcador $ 
+#               t = "Temperatura adecuada") # Título de la tabla (nombre del indicador)
 
 ```
 
-### Construcción de tablas de contingencia para dos o más variables (descriptiva multivariante)
+## Construcción de tablas de contingencia para dos o más variables (descriptiva multivariante)
 
 A continuación se define la función utilizada para la creación de tablas de contingencia presentadas en esta tesis doctoral. Crearemos una función propia para la creación de tablas de contingencia con los datos que iremos obteniendo. La creación de esta función facilita y simplifica la ejecución del código posterior.  
 
 ```{r}
 
-crear_tabla <- function(var1,var2,title,varname,numcol){
+crear_tabla2 <- function(var1,var2,title,varname,numcol){
   # Creamos la tabla de frecuencias   
-  z <- proc_freq(foessa2,
+  z <- proc_freq(pobgit2,
                row = var1, # Variable 1
                col = var2, # Variable 2
                include.row_percent = TRUE,
@@ -405,22 +413,23 @@ crear_tabla <- function(var1,var2,title,varname,numcol){
 
 
 
-#crear_tabla(var1 ="PE", #variable dependiente
-#            var2 ="discapacidad", # variable independiente
-#            title = "Pobreza energética y discapacidad", # título de la tabla 
-#            varname = "Tiene discapacidad reconocida", # Variable independiente
-#            numcol = 2) # Número de valores de la variable independiente 
+#crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+ #           var2 ="tamano_hogarf", # variable independiente
+  #          title = "Temperatura inadecuada en el hogar y tamaño del hogar", # título de la tabla 
+   #         varname = "Tamaño del hogar", # Variable independiente
+    #        numcol = 5) # Número de valores de la variable independiente 
 
 ```
 
-### Graficación de tablas de contingencia para dos o más variables (descriptiva multivariante)
+## Graficación de tablas de contingencia para dos o más variables (descriptiva multivariante)
 
 También definiremos una función propia para el diseño de gráficos de barra con el objetivo de representar las tablas de contingencia más relevantes que creemos a lo largo de esta sección cuantitativa de la tesis: 
 
 ```{r}
-crear_grafico <- function(x,y,title,xtitle){
-  df <- foessa2 %>% 
+crear_grafico_temp <- function(x,y,title,xtitle){
+  df <- pobgit2 %>% 
     drop_na({{x}}) %>%
+    drop_na({{y}}) %>%
     group_by({{y}},{{x}}) %>% 
     tally() %>% 
     complete({{x}}, fill = list(n = 0)) %>% 
@@ -430,7 +439,7 @@ crear_grafico <- function(x,y,title,xtitle){
     geom_bar(stat = 'identity', position = 'dodge') +
     scale_y_continuous("Porcentaje de población", expand = c(0,0))+ 
     scale_x_discrete(xtitle)+ 
-    scale_fill_manual("Vulnerabilidad energética", values = c("#15607a",      
+    scale_fill_manual("Temperatura\nadecuada\nen el hogar", values = c("#15607a",      
                                                        "#18a1cd",
                                                        "cyan")) +
     ggtitle(title) +
@@ -458,10 +467,52 @@ crear_grafico <- function(x,y,title,xtitle){
   
 }
 
-#crear_grafico(x = anciano, #variable independiente
-#              y = PE,  # variable dependiente 
-#              title = "Pobreza energética y personas mayores", # título del gráfico
-#              xtitle = "Hogares con un miembro de más de 65 años") # título axis X 
+
+crear_grafico_ret <- function(x,y,title,xtitle){
+  df <- pobgit2 %>% 
+    drop_na({{x}}) %>%
+    drop_na({{y}}) %>%
+    group_by({{y}},{{x}}) %>% 
+    tally() %>% 
+    complete({{x}}, fill = list(n = 0)) %>% 
+    mutate(percentage = n / sum(n) * 100)
+  
+  ggplot(df, aes({{x}}, percentage, fill = {{y}})) + 
+    geom_bar(stat = 'identity', position = 'dodge') +
+    scale_y_continuous("Porcentaje de población", expand = c(0,0))+ 
+    scale_x_discrete(xtitle)+ 
+    scale_fill_manual("Retraso en el\npago de facturas", values = c("#15607a",      
+                                                       "#18a1cd",
+                                                       "cyan")) +
+    ggtitle(title) +
+    theme_classic(base_size=10) + 
+    theme(plot.title = element_text(face = "bold", 
+                                    size = 10, 
+                                    color = "#00344c", 
+                                    vjust = 3, 
+                                    hjust = 0.5),
+          axis.text.x = element_text(#angle = 30, 
+                                     hjust = 0.5, 
+                                     vjust = 2, 
+                                     colour = "#00344c", 
+                                     size = rel(0.9)),
+          axis.title.x = element_text(face = "bold", 
+                                      size = 9),
+          axis.title.y = element_text(face = "bold", 
+                                      size = 9, 
+                                      vjust = 3),
+          axis.text.y = element_text(size=8, 
+                                     hjust = 0),
+          axis.line = element_blank(),
+          axis.ticks.x = element_blank(), 
+          legend.title = element_text(colour = "#00344c", size = 8, face = "bold")) 
+  
+}
+
+#crear_grafico_temp(x = miembro_mayor, #variable independiente
+ #             y = temp_adecuada,  # variable dependiente 
+  #            title = "Pobreza energética y personas mayores", # título del gráfico
+   #           xtitle = "Hogares con un miembro de más de 65 años") # título axis X 
 
 
 ```
@@ -473,7 +524,7 @@ En este apartado calcularemos los principales indicadores primarios de pobreza y
 
 ## Indicador consensual: temperatura adecuada en el hogar 
 
-El primer indicador analizado es el indicador consensual de **Temperatura adecuada en el hogar**. Este indicador se construye a partir de la variable `P51_3` de la encuesta, que se extrae de la pregunta:
+El primer indicador analizado es el indicador consensual de **Temperatura adecuada en el hogar**. Este indicador se construye a partir de la variable `temp_adecuada` que se identifica como `P51_3` en la encuesta, y que se extrae de la pregunta:
 
 > Dígame, por favor, si su hogar puede permitirse: (...) 51.3. Mantener la vivienda con una
 temperatura adecuada
@@ -483,83 +534,704 @@ A partir de dicha pregunta, obtenemos datos que nos permiten construir el indica
 De acuerdo con la guía metodológica de EPOV, para calcular los datos poblacionales a partir de datos basados en hogares, se atribuirá el valor de la variable en cuestión a cada uno de los miembros del hogar, operación que nos permite calcular el indicador a nivel poblacional. 
 
 ```{r}
-summary(pobgit2$P51_3) #vemos que la variable de temperatura adecuada se distribuye por hogares (cada observación es un hogar)
-
-str(pobgit2$P50) #vemos que esta variable es de tipo factorial y nos indica el tamaño del hogar (número de miembros)
-
 #Creamos una nueva variable que incluya el tamaño del hogar (miembros) en formato numérico
 pobgit2$P50_num <- as.numeric(as.character(pobgit2$P50)) 
 
 
 summary(pobgit2$P50_num)#Resumen numérico del tamaño de los hogares de la muestra 
 
-#Convertimos la variable factorial de temperatura adecuada en el hogar a variable dummy o binaria para poder realizar análisis estadísticos 
-class(pobgit2$P51_3)
+#Eliminamos los valores perdidos de la variable de temperatura adecuada en el hogar 
+levels(pobgit2$temp_adecuada)
 
-#Creación de variables dummies para la variable de temperatura adecuada en el hogar 
-pobgit2 <- dummy_cols(
-  pobgit2,
-  select_columns = 'P51_3',
-  remove_first_dummy = TRUE,
-  remove_most_frequent_dummy = FALSE,
-  ignore_na = TRUE,
-  split = NULL,
-  remove_selected_columns = FALSE
-)
+pobgit2 <- pobgit2 %>% replace_with_na(replace = list(temp_adecuada = "NS/NC"))
+pobgit2$temp_adecuada <-  fct_drop(pobgit2$temp_adecuada)
 
-head(pobgit2$P51_3)
-str(pobgit2$P51_3_No) # Esta variable binaria otorga un valor de 1 a las observaciones que indican que no pueden permitirse mantener su hogar a una temperatura adecuada 
 
-sum(pobgit2$P51_3_No)
+tabla_indicador(x = pobgit2$temp_adecuada, 
+            t = "Temperatura adecuada (% hogares)")
 
 ```
-A partir de esta primera operación, podemos ver que 452 hogares de la muestra no pueden permitirse mantener su hogar a una temperatura adecuada. 
+A partir de esta primera operación, podemos ver que 452 hogares de la muestra no pueden permitirse mantener su hogar a una temperatura adecuada. En este punto, procederemos a aplicar el método propuesto por el EPOV para obtener los datos poblacionales equivalentes. 
 
 
+```{r}
+
+# Creamos una base de datos duplicada con el total de población 
+pobgit_pob <- pobgit2 %>%  map_df(., rep, .$P50_num)
+
+#Creamos una tabla de frecuencia con la variable de temperatura adecuada a nivel poblacional 
+tabla_indicador(x = pobgit_pob$temp_adecuada, #variable con marcador $ 
+               t = "Temperatura adecuada (% población)") # Título de la tabla (nombre del indicador)
+
+
+```
+## Indicador consensual de retrasos en el pago de facturas de suministros 
+
+El segundo indicador, también de tipo consensual, será el de **Retrasos en el pago de facturas**. A partir de la variable `retrasos` que se identifica con la variable `P51_5` de la base de datos extraída de la encuesta: 
+
+> 51.5. ¿Ha habido retrasos en el pago de gastos relacionados con la vivienda
+principal (hipoteca o alquiler, recibos de gas, comunidad...) o en compras a plazos en los últimos 12 meses?
+
+Tal como puede apreciarse, debe tenerse en cuenta que este indicador no sólo incluye retrasos en el pago de suministros básicos, sino también de gastos vinculados con la vivienda principal en general, incluyendo hipoteca, alquiler, gastos de la comunidad u otros. En consecuencia, deberemos ser cautas al analizar sus resultados y ponerlos en contexto al compararlos con otros indicadores. 
+
+De los resultados obtenidos para la población, extraemos los siguientes resultados: 
+
+```{r}
+#Eliminamos los valores perdidos de la variable de retrasos en el pago de gastos relacionados con la vivienda principal
+levels(pobgit2$retrasos)
+
+#En este caso, vemos que hay 49 casos que han expresado NSNC ante esta pregunta, esto es el 3% de la muestra. 
+prop.table(table(pobgit2$retrasos))*100
+
+tabla_indicador(x = pobgit2$retrasos, 
+            t = "Retrasos en el pago (% hogares)")
+```
+En este punto, se procede a convertir los valores NSNC en valores perdidos, no excluyendo las observaciones de la muestra, pero no tenienda en cuenta ese 3% de las observaciones únicamente en relación a este indicador. 
+
+```{r}
+
+# Substituímos los valores NS/NA por valores perdidos (NA)
+pobgit2 <- pobgit2 %>% replace_with_na(replace = list(retrasos = "NS/NC"))
+pobgit2$retrasos <-  fct_drop(pobgit2$retrasos) #Eliminamos la categoría NS/NC de la variable que ahora está vacía
+
+tabla_indicador(x = pobgit2$retrasos, 
+            t = "Retrasos en pagos (% hogares)")
+```
+A continuación, reproducimos los cálculos para obtener el indicador en términos poblacionales, a partir de la base de datos que hemos creado anteriormente. 
+
+```{r}
+# Eliminaremos los valores perdidos en esta base de datos poblacional 
+pobgit_pob <- pobgit_pob %>% replace_with_na(replace = list(retrasos = "NS/NC"))
+pobgit_pob$retrasos <-  fct_drop(pobgit_pob$retrasos)
+
+#Creamos una tabla de frecuencia con la variable de temperatura adecuada a nivel poblacional 
+tabla_indicador(x = pobgit_pob$retrasos, #variable con marcador $ 
+               t = "Retrasos en pagos (% población)") # Título de la tabla (nombre del indicador)
+```
+## Superposición de indicadores
+A continuación, crearemos una nueva variable para el análisis de la coincidencia de afectación de los distintos indicadores de vulnerabilidad energética sobre esta misma población. En primer lugar creamos una variable que nos indique si un sujeto está afectado por al menos uno de los dos indicadores: 
+
+```{r}
+#Creamos una nueva variable llamada 'PE' que nos indicará si un individuo está afectado por al menos un indicador: 
+
+pobgit_pob <- pobgit_pob %>% mutate(PE = case_when(
+  retrasos == "Sí" ~ "PE", 
+  temp_adecuada == "No" ~ "PE", 
+  TRUE ~ "NO PE"
+))
+
+pobgit_pob$PE <- as.factor(pobgit_pob$PE) #Transformamos a factor para su interpretación 
+
+ind_PE <- 100*prop.table(table(pobgit_pob$PE))
+pandoc.table(ind_PE)
+
+tabla_indicador(x = pobgit_pob$PE, 
+                t = "Población gitana afectada por alguno de los indicadores PE")
+```
+A partir de los resultados podemos ver que un 60,3% de la muestra está afectada por alguno de los indicadores consensuales de pobreza energética, con la debida mención que el indicador sobre retrasos en los pagos es más amplio que el indicador incluído en la Estrategia Nacional contra la Pobreza Energética. 
+
+A continuación nos interesará evaluar qué proporción de la población de la muestra está afectada por dos o más indicadores: 
+
+```{r}
+
+# Recodificamos las variables afectadas para convertirlas en variables 'dummy' 
+df <- dummy_cols(pobgit_pob, 
+                 select_columns = c("retrasos", "temp_adecuada"), 
+                 ignore_na = TRUE) 
+
+df <- df %>% mutate(PE_Suma = retrasos_Sí + temp_adecuada_No) #Creamos una variable para saber por cuantos de los indicadores una persona está afectada 
+
+df$PE_Suma <- as.factor(df$PE_Suma) # Convertimos la nueva variable a factor para su mejor interpretación 
+
+ind_PESum <- 100*prop.table(table(df$PE_Suma)) # Construimos el nuevo indicador de superposición de indicadores
+pandoc.table(ind_PESum) #Ejecutamos el nuevo indicador 
+```
+También podemos obtener estos datos en una tabla: 
+
+```{r}
+tabla_indicador(x = df$PE_Suma, 
+                t = "Población afectada por 0, 1 y 2 indicadores")
+```
+## Indicador de pobreza y vulnerabilidad energética 
+
+En primer lugar, calcularemos la redundancia entre las dos variables seleccionadas: 
+
+Este método se basa en la construcción de un indicador multidimensional, a partir de la previa selección de indicadores, teniendo en cuenta el cálculo de redundancia entre las variables seleccionadas.  
+
+```{r}
+
+# CREAMOS UNA FUNCIÓN PARA CALCULAR LA REDUNDANCIA 
+
+redundancia2 <- function(var1,var2){
+  var1 <- enquo(var1)
+  var2 <- enquo(var2)
+  
+  #Total población
+  total <-  nrow(pobgit_pob)
+  
+  #Porcentaje de población afectada por el indicador 1
+  ind_1_p <- nrow(pobgit_pob %>% filter(!!var1 == "Sí"))
+  ind_1_p <- (ind_1_p/total)*100
+  
+  #Porcentaje de población afectada por el indicador 2
+  ind_2_p <- nrow(pobgit_pob %>% filter(!!var2 == "Sí"))
+  ind_2_p <- (ind_2_p/total)*100
+  
+  # Porcentaje de población afectada por ambos indicadores 
+  ind_mix <- nrow(pobgit_pob %>% filter(!!var1 == "Sí" & !!var2 == "Sí"))
+  ind_mix <- (ind_mix/total)*100
+  
+  dos <- c(ind_1_p, ind_2_p)
+  
+  #Cálculo de la redundancia
+  red <- ind_mix/min(dos)
+  red
+}
+
+```
+
+A partir de esta función, calcularemos la redundancia entre las variables seleccionadas para el indicador multidimensional que construiremos: 
+
+```{r}
+
+#Redundancia entre temperatura inadecuada y retrasos - 0.56
+redundancia2(var1 = temp_adecuada, 
+            var2 = retrasos)
+
+````
+El resultado del cálculo de redundancia nos indica que las variables están relacionadas en un 58%, por lo que se trata de un porcentaje muy elevado. En este caso, dadas las dificultades de interpretación de un indicador combinado, en tanto la variable de retrasos en los pagos de gastos relacionados con la vivienda habitual es más amplio que el indicador de retrasos en el pago de suministros básicos, optaremos por una caracterización por separado de los datos disponibles. 
+
+# Caracterización de los hogares en situación de precariedad energética 
+Hasta el momento nos hemos centrado en la construcción de los indicadores oficiales de pobreza energética. Ahora bien, también nos interesará ir más allá de los indicadores y caracterizar esta población. Para ello, combinaremos las variables de caracterización propuestas por el gobierno español en su Estrategia Nacional contra la Pobreza Energética, con el objetivo de facilitar la comparación de datos. 
+
+A diferencia de la encuesta EINSFOESSA, la base de datos de análisis de la FSG no dispone de la misma amplitud. Por este motivo, limitaremos la caracterización a las dimensiones en las cuales podemos obtener información a partir de las variables existentes o de nuevas variables que podamos crear.  
+
+También debe mencionarse que, en el caso de la base de datos de la Fundación Secretariado Gitano, la caracterización se realizará en base a las características de los hogares ya que no se dispone de suficiente información para poder aplicar esta caracterización a toda la población de la muestra. 
+
+A continuación especificamos las dimensiones en torno a las cuales hemos agrupado las variables de caracterización analizadas: 
+1. Dimensión 1: Características familiares 
+2. Dimensión 2: características económicas
+4. Dimensión 3: Características de la vivienda 
+3. Dimensión 4: Características del entorno urbano 
+5. Dimensión 5: Impactos sobre la salud y relaciones sociales 
+6. Dimensión 6: Vulnerabilidad energética y grupos minoritarios 
+
+
+## Dimensión 1: Características familiares 
+
+### Vulnerabilidad Energética según tamaño del hogar
+
+Para analizar la distribución de la población en situación de vulnerabilidad y precariedad energética según el tamaño del hogar, primero necesitaremos crear una variable de tamaño del hogar que nos permite su comparabilidad: 
+
+```{r}
+
+# Renombramos la variable que nos da informacion sobre el tamaño del hogar 
+pobgit2 <- pobgit2 %>% rename(tamano_hogar = P50)
+pobgit2 <- pobgit2 %>% rename(tamano_hogar_num = P50_num)
+
+levels(pobgit2$tamano_hogar)
+
+#Creamos una variable funcional para el análisis
+
+pobgit2$tamano_hogarf <- fct_collapse(pobgit2$tamano_hogar, 
+                                 "1 miembro" = c("1"), 
+                                 "2 miembros" = c("2"), 
+                                 "3 miembros" = c("3"), 
+                                 "4 miembros" = c("4"), 
+                                 "5 miembros o más" = c("5", "6", "7", "8", "9", "10", "11", "12", "15"),
+                                 other_level = NULL)
+
+#Eliminamos el factor level 'NC' 
+pobgit2$tamano_hogarf <- fct_drop(pobgit2$tamano_hogarf)
+
+levels(pobgit2$tamano_hogarf) # Verificamos el número de niveles iniciales de la variable recodificada 
+
+#Rordenamos los niveles del factor 
+pobgit2$tamano_hogarf <- factor(pobgit2$tamano_hogarf, levels = c("1 miembro","2 miembros","3 miembros","4 miembros","5 miembros o más"))
+
+
+```
+Una vez disponemos de una variable operativa sobre el tamaño del hogar, podremos crear tablas de contingencia para poner en relación las variables en juego. 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="tamano_hogarf", # variable independiente
+            title = "Temperatura inadecuada en el hogar y tamaño del hogar", # título de la tabla 
+            varname = "Tamaño del hogar", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+
+```
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="tamano_hogarf", # variable independiente
+            title = "Retrasos en el pago de facturas del hogar y tamaño del hogar", # título de la tabla 
+            varname = "Tamaño del hogar", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+
+```
+Para finalizar, graficaremos la relación entre estos indicadores y la variable de tamaño del hogar en los siguientes gráficos: 
+
+```{r}
+crear_grafico_temp(x = tamano_hogarf, #variable independiente
+                y = temp_adecuada,  # variable dependiente 
+                title = "Temperatura adecuada en el hogar", # título del gráfico
+                xtitle = "Tamaño del hogar") # título axis X 
+```
+```{r}
+crear_grafico_ret(x = tamano_hogarf, #variable independiente
+                y = retrasos,  # variable dependiente 
+                title = "Retrasos en el pago de facturas", # título del gráfico
+                xtitle = "Tamaño del hogar") # título axis X 
+```
+
+
+### Hogares con (al menos) una persona de más de 65 años
+
+```{r}
+# Recodificamos el nombre de la variable edad de la persona que contesta la encuesta
+pobgit2 <- pobgit2 %>% rename(edad = P1)
+
+#Convertimos  a
+
+pobgit2 <- pobgit2 %>% mutate(miembro_mayor = case_when(
+  edad >= 65 ~ 'Sí', 
+  A1_04_num >= 65 ~ 'Sí',
+  A2_04_num >= 65 ~ 'Sí',
+  A3_04_num >= 65 ~ 'Sí',
+  A4_04_num >= 65 ~ 'Sí',
+  A5_04_num >= 65 ~ 'Sí',
+  A6_04_num >= 65 ~ 'Sí',
+  A7_04_num >= 65 ~ 'Sí',
+  A8_04_num >= 65 ~ 'Sí',
+  A9_04_num >= 65 ~ 'Sí',
+  A10_04_num >= 65 ~  'Sí',
+  TRUE ~ 'No'
+))
+
+str(pobgit2$miembro_mayor)
+
+pobgit2$miembro_mayor <- as.factor(pobgit2$miembro_mayor)
+
+fct_count(pobgit2$miembro_mayor) #263 hogares tienen un miembro de m?s de 65 a?os
+
+```
+Una vez hemos identificado los hogares en que, al menos, uno de los miembros es mayor de 65 años, crearemos tablas de contingencia para comparar esta variable con los indicadores de vulnerabilidad energética identificados. En primer lugar, crearemos una tabla de contingencia para el indicador de temperatura inadecuada: 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="miembro_mayor", # variable independiente
+            title = "Temperatura inadecuada en el hogar y y unidades familiares con una persona mayor", # título de la tabla 
+            varname = "Unidad familiar con un miembro de más de 65 años", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+Ahora, creamos una tabla de contingencia para el indicador de retraso en el pago de facturas: 
+
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="miembro_mayor", # variable independiente
+            title = "Retrasos en el pago de facturas del hogar y unidades familiares con una persona mayor", # título de la tabla 
+            varname = "Unidad familiar com un miembro de más de 65 años", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+
+Una vez tenemos las tablas de datos, crearemos los gráficos que no ayudarán a visualizar la distribución de datos: 
+
+```{r}
+crear_grafico_temp(x = miembro_mayor, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura inadecuada en el hogar", # título del gráfico
+                    xtitle = "Hogares con un miembro de más de 65 años") # título axis X 
+
+```
+
+```{r}
+crear_grafico_ret(x = miembro_mayor, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retraso en el pago de facturas", # título del gráfico
+                    xtitle = "Hogares con un miembro de más de 65 años") # título axis X 
+```
+
+### Hogares con dos adultos (sin niños) y uno de ellos de más de 65 años
+
+Para el cálculo de estos indicadores, primero crearemos una nueva variable de referencia para identificar esta tipología específica de hogares: 
+
+```{r}
+#Creamos una nueva variable 'pareja_mayor' para identificar las unidades familiares con esta estructura familiar 
+pobgit2 <- mutate(pobgit2, pareja_mayor = case_when(
+ edad >= 65 & A1_04_num >= 18  & tamano_hogarf == "2 miembros" ~ "Sí", 
+  A1_04_num >= 65 & edad >= 18  & tamano_hogarf == "2 miembros" ~ "Sí",
+  TRUE ~ "No"))
+
+pobgit2$pareja_mayor <- as.factor(pobgit2$pareja_mayor)
+
+summary(pobgit2$pareja_mayor)
+
+#Total poblacián de adultos con almenos uno de ellos de m?s de 65 años
+pobgit2 %>% filter(pareja_mayor == "Sí")%>% summarise (sum(tamano_hogar_num)) #162 personas 
+```
+Una vez hemos identificado los hogares compuestos por dos miembros en que, al menos, uno de los miembros es mayor de 65 años, crearemos tablas de contingencia para comparar esta variable con los indicadores de vulnerabilidad energética identificados. En primer lugar, crearemos una tabla de contingencia para el indicador de temperatura inadecuada: 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="pareja_mayor", # variable independiente
+            title = "Temperatura inadecuada en el hogar y parejas mayores", # título de la tabla 
+            varname = "Unidades familiares de parejas con, al menos, un miembro mayor de 65 años", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="pareja_mayor", # variable independiente
+            title = "Retrasos en el pago de facturas del hogar y parejas mayores", # título de la tabla 
+            varname = "Unidades familiares de parejas con, al menos, un miembro mayor de 65 años", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+Una vez tenemos las tablas de datos, crearemos los gráficos que no ayudarán a visualizar la distribución de datos: 
+
+```{r}
+crear_grafico_temp(x = pareja_mayor, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura inadecuada en el hogar", # título del gráfico
+                    xtitle = "Parejas con, al menos, un miembro de más de 65 años") # título axis X 
+
+```
+
+```{r}
+crear_grafico_ret(x = pareja_mayor, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en las facturas del hogar", # título del gráfico
+                    xtitle = "Parejas con, al menos, un miembro de más de 65 años") # título axis X 
+
+```
+### Hogares Monoparentales y Monomarentales
+
+En primer lugar, en relación a los hogares monomarentales y monoparentales, lo que haremos será distinguir entre dos variables distintas: 
+* Hogares monoparentales, a partir de la variable `monoparental` para hogares con niños y un solo adulto. En este caso, se consideran tanto los hogares en que el único adulto es un hombre o una mujer. 
+* Hogares monomarentales, en que el único adulto es una mujer 
+
+```{r}
+
+# Hogares monoparentales
+
+pobgit2 <- pobgit2 %>% mutate(monoparental = case_when(
+  tamano_hogar_num == 1 ~ 'No',
+  A1_04_num > 18 ~ 'No',
+  A2_04_num > 18 ~ 'No',
+  A3_04_num > 18 ~ 'No',
+  A4_04_num > 18 ~ 'No',
+  A5_04_num > 18 ~ 'No',
+  A6_04_num > 18 ~ 'No',
+  A7_04_num > 18 ~ 'No',
+  A8_04_num > 18 ~ 'No',
+  A9_04_num > 18 ~ 'No',
+  A10_04_num > 18 ~  'No',
+  TRUE ~ 'Sí'
+))
+
+pobgit2$monoparental <- as.factor(pobgit2$monoparental)
+summary(pobgit2$monoparental)
+
+pobgit2 %>% filter(monoparental == "Sí") %>% summarise (sum(tamano_hogar_num)) #población de 261
+
+# Hogares monomarentales 
+
+pobgit2 <- pobgit2 %>% mutate(monomarental = case_when(
+  tamano_hogar_num == 1 ~ 'No',
+  A1_04_num > 18 ~ 'No',
+  A2_04_num > 18 ~ 'No',
+  A3_04_num > 18 ~ 'No',
+  A4_04_num > 18 ~ 'No',
+  A5_04_num > 18 ~ 'No',
+  A6_04_num > 18 ~ 'No',
+  A7_04_num > 18 ~ 'No',
+  A8_04_num > 18 ~ 'No',
+  A9_04_num > 18 ~ 'No',
+  A10_04_num > 18 ~  'No',
+  P2 == "Hombre" ~ 'No',
+  TRUE ~ 'Sí'
+))
+
+pobgit2$monomarental <- as.factor(pobgit2$monomarental)
+summary(pobgit2$monomarental)
+
+pobgit2 %>% filter(monomarental == "Sí") %>% summarise (sum(tamano_hogar_num)) #población de 154
+
+
+```
+Una vez tenemos creadas las dos variables, podremos crear tablas de contingencia entre las variables. 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="monoparental", # variable independiente
+            title = "Temperatura inadecuada en el hogar y familias monoparentales", # título de la tabla 
+            varname = "Unidades familiares monoparentales (ambos sexos)", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="monomarental", # variable independiente
+            title = "Temperatura inadecuada en el hogar y familias monomarentales", # título de la tabla 
+            varname = "Unidades familiares monomarentales", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
 
 
 
 
 ```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="monoparental", # variable independiente
+            title = "Retrasos en las facturas del hogar y familias monoparentales", # título de la tabla 
+            varname = "Unidades familiares monoparentales (ambos sexos)", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
 
-#Numero de hogares sin una temperatura adecuada 
-hogares_temp <- sum(pobgit2$P51_3_No)
-hogares_temp # 452 hogares sin temperatura adecuada 
 
-#Porcentaje de hogares sin una temperatura adecuada - quitamos los valores perdidos de la muestra  (4)
-anyNA(pobgit2$P51_3) #No hay valores perdidos de tipo NA
-sum(pobgit2$'P51_3_NS/NC') # Hay 4 valores perdidos de NS/NC - 0.26% valores perdidos 
-porcentaje_hogares_temp <- (hogares_temp/(nrow(pobgit2)-sum(pobgit2$`P51_3_NS/NC`)))*100
-porcentaje_hogares_temp # 30.37% de los hogares no tienen una temperatura adecuada 
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="monomarental", # variable independiente
+            title = "Retrasos en las facturas del hogar y familias monomarentales", # título de la tabla 
+            varname = "Unidades familiares monomarentales", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
 
-#Indicador de PE - Temperatura adecuada por población 
-temp_df <- pobgit2 %>% filter(P51_3 == "No")
-poblacion_temp <- sum(temp_df$P50_num)
-poblacion_temp # 1801 personas con una temperatura inadecuada en el hogar 
-poblacion_total <- sum(pobgit2$P50_num)
+Una vez disponemos de las tablas de contingencia, graficaremos las relaciones entre las variables en juego. 
 
-pe_indicador_temp <- poblacion_temp/poblacion_total*100
-pe_indicador_temp # El 29.941% de la población no puede mantener una temperatura adecuada en el hogar 
+```{r}
+crear_grafico_temp(x = monoparental, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura inadecuada en el hogar", # título del gráfico
+                    xtitle = "monoparentales") # título axis X 
+
+```
+
+
+```{r}
+crear_grafico_temp(x = monomarental, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura inadecuada en el hogar", # título del gráfico
+                    xtitle = "Unidades monomarentales") # título axis X 
+
 ```
 
 
 
+```{r}
+crear_grafico_ret(x = monoparental, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en las facturas del hogar", # título del gráfico
+                    xtitle = "Unidades monoparentales") # título axis X 
+
+```
 
 
+```{r}
+crear_grafico_ret(x = monomarental, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en las facturas del hogar", # título del gráfico
+                    xtitle = "Unidades monomarentales") # título axis X 
+
+```
+
+## Dimensión 2: Características socioeconómicas e indicadores relativos a ingresos familiares  
+
+### Vulnerabilidad Energética según quintil de renda 
+
+En el apartado de preparación de datos, hemos creado una variable específica sobre los ingresos equivalentes del hogar divididos en quintiles. En esta sección relacionaremos esta variable con los principales indicadores de pobreza y vulnerabilidad energética. 
+
+```{r}
+summary(pobgit2$quintiles_ingresos)
+
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="quintiles_ingresos", # variable independiente
+            title = "Retrasos en las facturas del hogar según quintiles de ingresos", # título de la tabla 
+            varname = "Quintiles de ingresos equivalentes", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+```
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="quintiles_ingresos", # variable independiente
+            title = "Temperatura adecuada en el hogar según quintiles de ingresos", # título de la tabla 
+            varname = "Quintiles de ingresos equivalentes", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+```
+
+```{r}
+crear_grafico_ret(x = quintiles_ingresos, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en las facturas del hogar", # título del gráfico
+                    xtitle = "Quintiles de ingresos equivalentes") # título axis X 
+```
+```{r}
+crear_grafico_temp(x = quintiles_ingresos, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura adecuada en el hogar", # título del gráfico
+                    xtitle = "Quintiles de ingresos equivalentes") # título axis X 
+```
+
+### Vulnerabilidad energética y nivel de ingresos equivalentes 
+A continuación, veremos gráficos representativos entre la relación entre temperatura adecuada en el hogar y los ingresos equivalentes de la unidad familiar. 
+
+```{r}
+g1 <- pobgit2 %>% 
+  filter(!is.na(temp_adecuada)) %>%
+  ggplot(aes(ing_equivalente, temp_adecuada, color = temp_adecuada)) + geom_boxplot()
+g1
+
+```
+
+```{r}
+g2 <- pobgit2 %>% 
+  filter(!is.na(retrasos)) %>%
+  ggplot(aes(ing_equivalente, retrasos, color = retrasos)) + geom_boxplot()
+g2
+
+```
+```{r}
+#install.packages("ggridges")
+library(ggridges)
+
+g2 <- pobgit2 %>% 
+  filter(!is.na(retrasos)) %>%
+ggplot(aes(x = ing_equivalente, y = retrasos, fill = retrasos)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none")
+
+g2
+
+```
+
+### Vulnerabilidad y precariedad energética en función de la situación de ocupación de la persona de referencia del hogar
+
+Un segundo indicador relevante en relación con la dimensión económica es el impacto de pobreza energética en función de la situación de ocupación de la persona de referencia del hogar. Para analizar esta relación, usaremos la variable `ppalocupacion` que crearemos a partir de la variable `P5`.
+
+```{r}
+
+str(pobgit2$P5) # Nos indica quién es la persona de referencia 
+
+#En caso que la persona de referencia sea quien responde -- P13
+
+summary(pobgit2$P13) # Actividad principal si quien contesta la encuesta es la persona de referencia 
+
+#En caso que la persona de referencia sea otra
+# A2 - preguntas sobre la relación con la persona entrevistada 
+# A6 - actividad principal de la persona en cuestión 
+
+pobgit2$P5_car <- as.character(pobgit2$P5)
+pobgit2$P13_car <- as.character(pobgit2$P13)
 
 
+pobgit2 <- pobgit2 %>% mutate(actp_yo = case_when(
+  P5 == "Es usted la persona de referencia" ~ "Principal", 
+  TRUE ~ "No Principal"
+))
+
+# Cambiaremos las etiquetas de valores en P5 para que coincidan con las existentes en las variables de familiares 
+
+pobgit2$P5 <- revalue(pobgit2$P5, c("Es usted la persona de referencia" = "Es usted la persona de referencia", 
+                      "Es su hijo/a" = "Hijo/a, hijastro/a", 
+                      "Es su nieto/a" = "Nieto/a, nieto político/a (o pareja de los mismos)", 
+                      "Es otro pariente" = "Otro pariente", 
+                      "Es su cónyuge/pareja" = "Cónyuge o pareja", 
+                      "Es su suegro/a" = "Suegro/a o pareja de los mismos", 
+                      "Es su abuelo/a" = "Abuelo/a", 
+                      "Otros no parientes" = "Sin parentesco con usted", 
+                      "Es su padre/madre" = "Padre/Madre", 
+                      "Es su cuñado/a" = "Cuñado/a", 
+                      "Es su sobrino/a" = "Sobrino/a", 
+                      "Es su hermano/a" = "Hermano/a, hermanastro/a", 
+                      "Es su yerno/nuera" = "Nuera/Yerno (o pareja del hijo/a, hijastro/a)", 
+                      "Es su primo/a" = "Primo/a", 
+                      "NC" = "NC"
+                      ))
+
+#Añadimos un nivel a los factores a comparar, para no obtener errores posteriormente por no coincidencia 
+pobgit2$A1_02 <- fct_expand(pobgit2$A1_02,"Es usted la persona de referencia" )
+pobgit2$A2_02 <- fct_expand(pobgit2$A2_02,"Es usted la persona de referencia" )
+pobgit2$A3_02 <- fct_expand(pobgit2$A3_02,"Es usted la persona de referencia" )
+pobgit2$A4_02 <- fct_expand(pobgit2$A4_02,"Es usted la persona de referencia" )
+pobgit2$A5_02 <- fct_expand(pobgit2$A5_02,"Es usted la persona de referencia" )
+pobgit2$A6_02 <- fct_expand(pobgit2$A6_02,"Es usted la persona de referencia" )
+pobgit2$A7_02 <- fct_expand(pobgit2$A7_02,"Es usted la persona de referencia" )
+pobgit2$A8_02 <- fct_expand(pobgit2$A8_02,"Es usted la persona de referencia" )
+pobgit2$A9_02 <- fct_expand(pobgit2$A9_02,"Es usted la persona de referencia" )
+pobgit2$A10_02 <- fct_expand(pobgit2$A10_02,"Es usted la persona de referencia" )
+
+summary(pobgit2$A1_02)
+
+levels(pobgit2$P5)
+
+levels(pobgit2$A9_02)
+
+# Vamos a probar a transformar las variables a copiar en character en vez de factor... 
+pobgit3 <- pobgit2
+str(pobgit3)
+
+pobgit3$P13 <- as.character(pobgit3$P13)
+pobgit3$P5 <- as.character(pobgit3$P5)
+pobgit3$A1_06 <- as.character(pobgit3$A1_06)
+pobgit3$A2_06 <- as.character(pobgit3$A2_06)
+pobgit3$A3_06 <- as.character(pobgit3$A3_06)
+pobgit3$A4_06 <- as.character(pobgit3$A4_06)
+pobgit3$A5_06 <- as.character(pobgit3$A5_06)
+pobgit3$A6_06 <- as.character(pobgit3$A6_06)
+pobgit3$A7_06 <- as.character(pobgit3$A7_06)
+pobgit3$A8_06 <- as.character(pobgit3$A8_06)
+pobgit3$A9_06 <- as.character(pobgit3$A9_06)
+pobgit3$A10_06 <- as.character(pobgit3$A10_06)
+pobgit3$A1_02 <- as.character(pobgit3$A1_02)
+pobgit3$A2_02 <- as.character(pobgit3$A2_02)
+pobgit3$A3_02 <- as.character(pobgit3$A3_02)
+pobgit3$A4_02 <- as.character(pobgit3$A4_02)
+pobgit3$A5_02 <- as.character(pobgit3$A5_02)
+pobgit3$A6_02 <- as.character(pobgit3$A6_02)
+pobgit3$A7_02 <- as.character(pobgit3$A7_02)
+pobgit3$A8_02 <- as.character(pobgit3$A8_02)
+pobgit3$A9_02 <- as.character(pobgit3$A9_02)
+pobgit3$A10_02 <- as.character(pobgit3$A10_02)
 
 
+class(pobgit3$P5)
+levels(pobgit3$P13)
+levels(pobgit3$A1_06)
+levels(pobgit3$A1_02)
+  
+#Creamos una nueva variable con la actividad principal de la persona de referencia en el hogar (act_p)
+pobgit3 <- pobgit3 %>% mutate(act_p = ifelse(P5 == "Es usted la persona de referencia", P13, ifelse(
+  P5 == A1_02, A1_06, ifelse(
+    P5 == A2_02, A2_06, ifelse(
+      P5 == A3_02, A3_06, ifelse(
+        P5 == A4_02, A4_06, ifelse(
+          P5 == A5_02, A5_06, ifelse(
+            P5 == A6_02, A6_06, ifelse(
+              P5 == A7_02, A7_06, ifelse(
+                P5 == A8_02, A8_06, ifelse(
+                  P5 == A9_02, A9_06, ifelse(
+                    P5 == A10_02, A10_06, NA))))))))))))
+
+view(pobgit3)
+class(pobgit3$act_p)
+
+#Comprobamos cuantos NA hemos obtenido 
+sum(is.na(pobgit3$act_p)) #Hay 10 NA, por lo tanto no son significativos en relaci?n al total 
 
 
+pobgit3$act_p <- as.factor(pobgit3$act_p)
+levels(pobgit3$act_p) # Ahora mismo hay 22 levels que debemos recodificar a ocupados, parados, jubilados, inactivos 
+
+# Inactivos incluira las situaciones de inactividad reconocidas por el INE que no son jubilados: estudiantes, pensionistas no jubilados, incapacitados, labores del hogar... 
+
+pobgit3$act_p <- fct_explicit_na(pobgit3$act_p, na_level = "Missing")
 
 
-
-
-
-
-
-
+pobgit3$act_p <- fct_collapse(pobgit3$act_p,
+             ocupados=c("Baja por enfermedad o maternidad/paternidad","Trabajador/a en un negocio familiar","Trabajador/a por cuenta ajena (Contrato fijo)","Trabajador/a por cuenta ajena (Contrato temporal)","Trabajador/a por cuenta ajena (Fijo)","Trabajador/a por cuenta ajena sin contrato","Trabajador/a por cuenta propia","Trabajando en un negocio familiar","Trabajando por cuenta propia"),
+             parados=c("Parado/a","Parado/a, buscando primer empleo","Parado/a, que trabajó anteriormente"),
+             jubilados=c("Jubilado o retirado del trabajo","Jubilado/a o retirado/a del trabajo"),
+             inactivos=c("Estudiando/realizando cursos de formación","Incapacitado/a permanente","Labores del hogar","Otra situación","Realizando sin remuneración trabajos sociales, actividades benéficas","Trabajo doméstico no remunerado"),
+             other_level= "Missing")
+```
 
 
 

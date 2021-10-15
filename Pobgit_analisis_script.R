@@ -34,7 +34,7 @@ pobgit2 <- as.tibble (pobgit)
 
 print(pobgit2)
 
-# Aplicar función de limpieza de datos factoriales mixtos a numérico 
+# Aplicar funci?n de limpieza de datos factoriales mixtos a num?rico 
 
 limp_factor_mixto <- function(X){
   var_num <- as.character(X)
@@ -74,23 +74,23 @@ pobgit2$A9_num <- limp_factor_mixto(pobgit2$A9)
     pobgit2$A8_7_num <- limp_factor_mixto(pobgit2$A8_7)
     
 
-# Summary de la variable numérica de ingresos mensuales en el hogar 
+# Summary de la variable num?rica de ingresos mensuales en el hogar 
 print(pobgit2$A9_num)
 
-# Creamos función para calcular los ingresos totales del hogar de acuerdo con los ingresos por conceptos y totales 
+# Creamos funci?n para calcular los ingresos totales del hogar de acuerdo con los ingresos por conceptos y totales 
 
 pobgit2 <- pobgit2 %>% mutate (ing_hogar_conc = select(., A8_1_num:A8_7_num) %>% replace(is.na(.), 0) %>% rowSums())
 print(pobgit2$ing_hogar_conc)
 
-#Creamos fórmula para (1) detectar qué importe entre los ingresos totales o por conceptos es más alto, y seleccionarlo y 
-#(2) detectar si en A9 no hay ingresos, acudir a los conceptos anteriores aunque sean más bajos 
+#Creamos f?rmula para (1) detectar qu? importe entre los ingresos totales o por conceptos es m?s alto, y seleccionarlo y 
+#(2) detectar si en A9 no hay ingresos, acudir a los conceptos anteriores aunque sean m?s bajos 
 
 pobgit2$ing_hogar_total <- ifelse(pobgit2$ing_hogar_conc > pobgit2$A9_num, pobgit2$ing_hogar_conc, pobgit2$A9_num)
 print(pobgit2$ing_hogar_total)
 
 pobgit2 %>%  select(A9_num, ing_hogar_conc, ing_hogar_total) %>% print()
 
-#Creamos función para limpiar las variables sobre edad, en las que queremos que se mantengan las NA
+#Creamos funci?n para limpiar las variables sobre edad, en las que queremos que se mantengan las NA
 
 limp_factor_mixto2 <- function(X){
   var_z <- as.character(X)
@@ -115,15 +115,15 @@ pobgit2$A10_04_num <- limp_factor_mixto2(pobgit2$A10_04)
 
 str(pobgit2$A9_04_num)
 
-#TAMAÑO EQUIVALENTE DEL HOGAR (A1_04 - A7_04)
+#TAMA?O EQUIVALENTE DEL HOGAR (A1_04 - A7_04)
 
-# Calculo del valor de equivalencia "OCDE modificada", según el cual:
+# Calculo del valor de equivalencia "OCDE modificada", seg?n el cual:
 # 1r adulto = 1
 # 2o adulto y siguientes = 0.5
-# Niños de menos de 14 años = 0.3 
+# Ni?os de menos de 14 a?os = 0.3 
 
 
-#Crear funció para calcular el peso equivalente en la escala OECD de cada variable 
+#Crear funci? para calcular el peso equivalente en la escala OECD de cada variable 
 
 peso_variable_oecd <- function(x){
   y <- ifelse(x >= 16, "0.5", ifelse(x < 16, "0.3", "0"))
@@ -142,15 +142,15 @@ pobgit2$A8_04_oecd <- peso_variable_oecd(pobgit2$A8_04_num)
 pobgit2$A9_04_oecd <- peso_variable_oecd(pobgit2$A9_04_num)
 pobgit2$A10_04_oecd <- peso_variable_oecd(pobgit2$A10_04_num)
 
-# Una manera alternativa habría sido crear un for loop adaptado a la fila, sumando de forma cumulativa 
+# Una manera alternativa habr?a sido crear un for loop adaptado a la fila, sumando de forma cumulativa 
 pobgit2$A5_04_oecd %>% class()
 print(pobgit2 %>% select(A1_04_oecd:hogar_oecd))
 
-#Sumar los pesos de cada hogar (fila/observación)
+#Sumar los pesos de cada hogar (fila/observaci?n)
 pobgit2 <- pobgit2 %>% mutate(hogar_oecd = select(., A1_04_oecd:A10_04_oecd) %>% replace(is.na(.), 0) %>% rowSums())
 pobgit2$hogar_oecd <- pobgit2$hogar_oecd + 1
 
-#Dividir los ingresos totales del hogar por el tamaño equivalente del hogar
+#Dividir los ingresos totales del hogar por el tama?o equivalente del hogar
 pobgit2$ing_equivalente <- pobgit2$ing_hogar_total/pobgit2$hogar_oecd
 
 print(pobgit2 %>% select(A1_04_oecd:ing_equivalente))
@@ -165,24 +165,24 @@ levels(pobgit2$quintiles_ingresos)
 pobgit2$quintiles_ingresos <- revalue(pobgit2$quintiles_ingresos, c("[0,167]"= "Quintil 1",  "(167,281]" = "Quintil 2", "(281,400]" = "Quintil 3", "(400,560]" = "Quintil 4", "(560,2.28e+03]" = "Quintil 5"))
 
 
-## CALCULO INDICADOR TEMPERATURA ADECUADA EN FUNCIÓN DE LA METODOLOGÍA EPOV 
-# EPOV atribuye el valor de temp_adecuada a cada uno de los miembros del hogar y a partir de entonces calcula el indicador por población
+## CALCULO INDICADOR TEMPERATURA ADECUADA EN FUNCI?N DE LA METODOLOG?A EPOV 
+# EPOV atribuye el valor de temp_adecuada a cada uno de los miembros del hogar y a partir de entonces calcula el indicador por poblaci?n
 
-summary(pobgit2$P51_3) #vemos que la variable de temperatura adecuada se distribuye por hogares (cada observación es un hogar)
-print(pobgit2$P50) #vemos que esta variable es un factor que nos indica el tamaño del hogar (número de miembros)
+summary(pobgit2$P51_3) #vemos que la variable de temperatura adecuada se distribuye por hogares (cada observaci?n es un hogar)
+print(pobgit2$P50) #vemos que esta variable es un factor que nos indica el tama?o del hogar (n?mero de miembros)
 
-#Crear una nueva variable que incluya el tamaño del hogar (miembros) en formato numerico
-pobgit2$P50_num <- as.numeric(as.character(pobgit2$P50)) # Creamos la nueva variable de tipo numérico que nos dice el número de miembros del hogar
+#Crear una nueva variable que incluya el tama?o del hogar (miembros) en formato numerico
+pobgit2$P50_num <- as.numeric(as.character(pobgit2$P50)) # Creamos la nueva variable de tipo num?rico que nos dice el n?mero de miembros del hogar
 
-summary(pobgit2$P50_num)#Resumen numérico del tamaño de los hogares de la muestra 
+summary(pobgit2$P50_num)#Resumen num?rico del tama?o de los hogares de la muestra 
 print(pobgit2$P50_num)
 
-#Convertir  variable factoriales a variables dummies para poder realizar análisis estadísticos 
+#Convertir  variable factoriales a variables dummies para poder realizar an?lisis estad?sticos 
 View(pobgit2)
 
 class(pobgit2$P51_3)
 
-#Creación de variables dummies para la variable de temperatura adecuada en el hogar 
+#Creaci?n de variables dummies para la variable de temperatura adecuada en el hogar 
 pobgit2 <- dummy_cols(
   pobgit2,
   select_columns = 'P51_3',
@@ -207,18 +207,18 @@ sum(pobgit2$'P51_3_NS/NC') # Hay 4 valores perdidos de NS/NC - 0.26% valores per
 porcentaje_hogares_temp <- (hogares_temp/(nrow(pobgit2)-sum(pobgit2$`P51_3_NS/NC`)))*100
 porcentaje_hogares_temp # 30.37% de los hogares no tienen una temperatura adecuada 
 
-#Indicador de PE - Temperatura adecuada por población 
+#Indicador de PE - Temperatura adecuada por poblaci?n 
 temp_df <- pobgit2 %>% filter(P51_3 == "No")
 poblacion_temp <- sum(temp_df$P50_num)
 poblacion_temp # 1801 personas con una temperatura inadecuada en el hogar 
 poblacion_total <- sum(pobgit2$P50_num)
 
 pe_indicador_temp <- poblacion_temp/poblacion_total*100
-pe_indicador_temp # El 29.941% de la población no puede mantener una temperatura adecuada en el hogar 
+pe_indicador_temp # El 29.941% de la poblaci?n no puede mantener una temperatura adecuada en el hogar 
 
 ## INDICADOR PE - RETRASOS EN EL PAGO DE FACTURAS ("Arrears on utility bills")
 
-#Creación de variables dummies para la variable de retrasos en las facturas 
+#Creaci?n de variables dummies para la variable de retrasos en las facturas 
 pobgit2 <- dummy_cols(
   pobgit2,
   select_columns = 'P51_5',
@@ -231,39 +231,39 @@ pobgit2 <- dummy_cols(
 
 View(pobgit2)
 
-hogares_ret <- sum(pobgit2$P51_5_Sí)
+hogares_ret <- sum(pobgit2$P51_5_S?)
 hogares_ret # 758 hogares sin temperatura adecuada 
 
 #Porcentaje de hogares con retrasos en las facturas - quitamos los valores perdidos de la muestra  (49)
 anyNA(pobgit2$P51_5) #No hay valores perdidos de tipo NA
 sum(pobgit2$'P51_5_NS/NC') # Hay 49 valores perdidos de NS/NC - 3.28% de valores perdidos 
 porcentaje_hogares_ret <- (hogares_ret/(nrow(pobgit2)-sum(pobgit2$`P51_5_NS/NC`)))*100
-porcentaje_hogares_ret # 52.52% de los hogares tienen retrasos en las facturas de suministros básicos 
+porcentaje_hogares_ret # 52.52% de los hogares tienen retrasos en las facturas de suministros b?sicos 
 
-#Indicador de PE - Población con retrasos en las facturas de suministros 
-ret_df <- pobgit2 %>% filter(P51_5 == "Sí")
+#Indicador de PE - Poblaci?n con retrasos en las facturas de suministros 
+ret_df <- pobgit2 %>% filter(P51_5 == "S?")
 poblacion_ret <- sum(ret_df$P50_num)
 poblacion_ret # 3128 personas con retrasos en las facturas
 poblacion_total <- sum(pobgit2$P50_num)
 
 pe_indicador_ret <- poblacion_ret/poblacion_total*100
-pe_indicador_ret # El 52% de la población con retrasos en las facturas
+pe_indicador_ret # El 52% de la poblaci?n con retrasos en las facturas
 
 
 #EXPLORAR EL PORCENTAJE DE FAMILIAS QUE SUFREN AMBOS INDICADORES 
-pobgit2_retrasos_temp <- pobgit2 %>% filter(P51_3 == "No" & P51_5 == "Sí")
+pobgit2_retrasos_temp <- pobgit2 %>% filter(P51_3 == "No" & P51_5 == "S?")
 hogares_ret_temp <- nrow(pobgit2_retrasos_temp)
 hogares_ret_temp_perc <- hogares_ret_temp/1492*100
 hogares_ret_temp_perc #El 21.64879% de los hogares no pueden mantener una temperatura adecuada Y tienen retrasos en las facturas 
 
 
-#VARIABLES DE CARACTERIZACIÓN 
+#VARIABLES DE CARACTERIZACI?N 
 
-#Crear una variable que nos indique si la familia está afectada por uno de los indicadores de pobreza energética disponibles
+#Crear una variable que nos indique si la familia est? afectada por uno de los indicadores de pobreza energ?tica disponibles
 
 pobgit2 <- mutate(pobgit2, pe = ifelse(
     P51_3 == "No", "PE", ifelse(
-   P51_5 == "Sí", "PE", "No PE")))
+   P51_5 == "S?", "PE", "No PE")))
 
 class(pobgit2$pe)
 levels(pobgit2$pe)
@@ -273,7 +273,9 @@ prop.table(table(pobgit2$pe))*100
 pobgit2$pe <- as.factor(pobgit2$pe)
 
 summary(pobgit2$quintiles_ingresos)
-# POBREZA ENERGÉTICA POR QUINTILES DE RENTA POR UNIDAD DE CONSUMO 
+
+
+# POBREZA ENERG?TICA POR QUINTILES DE RENTA POR UNIDAD DE CONSUMO 
 
 ctable1 <- addmargins(prop.table (table(pobgit2$pe, pobgit2$quintiles_ingresos)))*100
 ctable1 # Table PE por quintiles (hogares con ambos indicadores por quintiles)
@@ -282,11 +284,11 @@ write.table(ctable1, file = "ctable1.txt", sep = ",", quote = FALSE, row.names =
 
 fct_count(pobgit2$quintiles_ingresos) #Ver total de hogares de la muestra en cada quintil 
 
-#Temperatura inadecuada por quintiles por hogar y población 
+#Temperatura inadecuada por quintiles por hogar y poblaci?n 
 
 # Q1
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% summarise (sum(P50_num)) # población de 1411 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Población 419 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% summarise (sum(P50_num)) # poblaci?n de 1411 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Poblaci?n 419 
 419/1411*100 # 29.69525%
 
 temp_q1 <- pobgit2 %>% filter(quintiles_ingresos == "Quintil 1") %>% summarise(sum(P51_3_No))
@@ -294,8 +296,8 @@ temp_q1 <- (temp_q1/301)*100
 temp_q1 # Porcentaje de hogares en quintil 1 con temp inadecuada 
 
 # Q2
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% summarise (sum(P50_num)) # población de 1333 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Población 489
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% summarise (sum(P50_num)) # poblaci?n de 1333 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Poblaci?n 489
 489/1333*100 # 36.68417
 
 temp_q2 <- pobgit2 %>% filter(quintiles_ingresos == "Quintil 2") %>% summarise(sum(P51_3_No))
@@ -304,8 +306,8 @@ temp_q2  # Porcentaje de hogares en quintil 2 con temp inadecuada
 
 
 # Q3
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% summarise (sum(P50_num)) # población de 1287 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Población 450
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% summarise (sum(P50_num)) # poblaci?n de 1287 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Poblaci?n 450
 450/1287*100 # 34.96503
 
 temp_q3 <- pobgit2 %>% filter(quintiles_ingresos == "Quintil 3") %>% summarise(sum(P51_3_No))
@@ -313,8 +315,8 @@ temp_q3 <- (temp_q3/332)*100
 temp_q3  # Porcentaje de hogares en quintil 3 con temp inadecuada 
 
 # Q4
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% summarise (sum(P50_num)) # población de 944 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Población 264
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% summarise (sum(P50_num)) # poblaci?n de 944 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Poblaci?n 264
 264/944*100 # 27.9661
 
 temp_q4 <- pobgit2 %>% filter(quintiles_ingresos == "Quintil 4") %>% summarise(sum(P51_3_No))
@@ -322,8 +324,8 @@ temp_q4 <- (temp_q4/264)*100
 temp_q4  # Porcentaje de hogares en quintil 4 con temp inadecuada 
 
 # Q5
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% summarise (sum(P50_num)) # población de 1040 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Población 179
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% summarise (sum(P50_num)) # poblaci?n de 1040 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) # Poblaci?n 179
 179/1040*100 # 17.21154
 
 temp_q5 <- pobgit2 %>% filter(quintiles_ingresos == "Quintil 5") %>% summarise(sum(P51_3_No))
@@ -331,52 +333,52 @@ temp_q5 <- (temp_q5/299)*100
 temp_q5  # Porcentaje de hogares en quintil 5 con temp inadecuada 
 
 
-#Retrasos en las facturas por quintiles por población 
+#Retrasos en las facturas por quintiles por poblaci?n 
 
 # Q1
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% summarise (sum(P50_num)) # población de 1411 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% filter (P51_5 == "Sí") %>% summarise (sum(P50_num)) # Población 784 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% summarise (sum(P50_num)) # poblaci?n de 1411 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 1") %>% filter (P51_5 == "S?") %>% summarise (sum(P50_num)) # Poblaci?n 784 
 784/1411*100 # 55.56343%
 
 # Q2
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% summarise (sum(P50_num)) # población de 1333 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% filter (P51_5 == "Sí") %>% summarise (sum(P50_num)) # Población 828
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% summarise (sum(P50_num)) # poblaci?n de 1333 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 2") %>% filter (P51_5 == "S?") %>% summarise (sum(P50_num)) # Poblaci?n 828
 828/1333*100 # 62.11553
 
 # Q3
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% summarise (sum(P50_num)) # población de 1287 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% filter (P51_5 == "Sí") %>% summarise (sum(P50_num)) # Población 668
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% summarise (sum(P50_num)) # poblaci?n de 1287 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 3") %>% filter (P51_5 == "S?") %>% summarise (sum(P50_num)) # Poblaci?n 668
 668/1287*100 # 51.90365
 
 # Q4
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% summarise (sum(P50_num)) # población de 944 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% filter (P51_5 == "Sí") %>% summarise (sum(P50_num)) # Población 477
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% summarise (sum(P50_num)) # poblaci?n de 944 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 4") %>% filter (P51_5 == "S?") %>% summarise (sum(P50_num)) # Poblaci?n 477
 477/944*100 # 50.52966
 
 # Q5
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% summarise (sum(P50_num)) # población de 1040 
-pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% filter (P51_5 == "Sí") %>% summarise (sum(P50_num)) # Población 371
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% summarise (sum(P50_num)) # poblaci?n de 1040 
+pobgit2 %>% filter (quintiles_ingresos == "Quintil 5") %>% filter (P51_5 == "S?") %>% summarise (sum(P50_num)) # Poblaci?n 371
 371/1040*100 # 35.67308
 
-#POBREZA ENERGÉTICA POR TAMAÑO DEL HOGAR 
+#POBREZA ENERG?TICA POR TAMA?O DEL HOGAR 
 
 levels(pobgit2$P50)
 
-#Creamos una nueva variable simplificando los valores de la variable P50 (tamaño del hogar)
+#Creamos una nueva variable simplificando los valores de la variable P50 (tama?o del hogar)
 pobgit2$tamhogar <- fct_collapse(pobgit2$P50, 
                                  "1 miembro" = c("1"), 
                                  "2 miembros" = c("2"), 
                                  "3 miembros" = c("3"), 
                                  "4 miembros" = c("4"), 
-                                 "5 miembros o más" = c("5", "6", "7", "8", "9", "10", "11", "12", "15"), 
+                                 "5 miembros o m?s" = c("5", "6", "7", "8", "9", "10", "11", "12", "15"), 
                                  other_level = NULL)
 fct_count(pobgit2$tamhogar)
 
-# Temperatura inadecuada por tamaño del hogar 
+# Temperatura inadecuada por tama?o del hogar 
 
 # 1 miembro 
 pobgit2 %>% filter (tamhogar == "1 miembro") %>% 
-  summarise (sum(P50_num)) # Población 74
+  summarise (sum(P50_num)) # Poblaci?n 74
 
 pobgit2 %>% filter (tamhogar == "1 miembro") %>% 
   filter (P51_3 == "No") %>% 
@@ -386,7 +388,7 @@ pobgit2 %>% filter (tamhogar == "1 miembro") %>%
 
 # 2 miembros 
 pobgit2 %>% filter (tamhogar == "2 miembros") %>% 
-  summarise (sum(P50_num)) # Población 514
+  summarise (sum(P50_num)) # Poblaci?n 514
 
 pobgit2 %>% filter (tamhogar == "2 miembros") %>% 
   filter (P51_3 == "No") %>% 
@@ -396,7 +398,7 @@ pobgit2 %>% filter (tamhogar == "2 miembros") %>%
 
 # 3 miembros 
 pobgit2 %>% filter (tamhogar == "3 miembros") %>% 
-  summarise (sum(P50_num)) # Población 825
+  summarise (sum(P50_num)) # Poblaci?n 825
 
 pobgit2 %>% filter (tamhogar == "3 miembros") %>% 
   filter (P51_3 == "No") %>% 
@@ -406,7 +408,7 @@ pobgit2 %>% filter (tamhogar == "3 miembros") %>%
 
 # 4 miembros 
 pobgit2 %>% filter (tamhogar == "4 miembros") %>% 
-  summarise (sum(P50_num)) # Población 1332
+  summarise (sum(P50_num)) # Poblaci?n 1332
 
 pobgit2 %>% filter (tamhogar == "4 miembros") %>% 
   filter (P51_3 == "No") %>% 
@@ -414,70 +416,70 @@ pobgit2 %>% filter (tamhogar == "4 miembros") %>%
 
 312/1332*100 # 23.42342
 
-# 5 miembros o más
-pobgit2 %>% filter (tamhogar == "5 miembros o más") %>% 
-  summarise (sum(P50_num)) # Población 3270
+# 5 miembros o m?s
+pobgit2 %>% filter (tamhogar == "5 miembros o m?s") %>% 
+  summarise (sum(P50_num)) # Poblaci?n 3270
 
-pobgit2 %>% filter (tamhogar == "5 miembros o más") %>% 
+pobgit2 %>% filter (tamhogar == "5 miembros o m?s") %>% 
   filter (P51_3 == "No") %>% 
   summarise (sum(P50_num)) # 1012 
 
 1012/3270*100 # 30.94801
 
-# Retrasos en las facturas por tamaño del hogar 
+# Retrasos en las facturas por tama?o del hogar 
 
 # 1 miembro 
 pobgit2 %>% filter (tamhogar == "1 miembro") %>% 
-  summarise (sum(P50_num)) # Población 74
+  summarise (sum(P50_num)) # Poblaci?n 74
 
 pobgit2 %>% filter (tamhogar == "1 miembro") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) # 35 
 
 35/74*100 # 47.2973
 
 # 2 miembros 
 pobgit2 %>% filter (tamhogar == "2 miembros") %>% 
-  summarise (sum(P50_num)) # Población 514
+  summarise (sum(P50_num)) # Poblaci?n 514
 
 pobgit2 %>% filter (tamhogar == "2 miembros") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) # 244 
 
 244/514*100 # 47.47082
 
 # 3 miembros 
 pobgit2 %>% filter (tamhogar == "3 miembros") %>% 
-  summarise (sum(P50_num)) # Población 825
+  summarise (sum(P50_num)) # Poblaci?n 825
 
 pobgit2 %>% filter (tamhogar == "3 miembros") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) # 450 
 
 450/825*100 # 54.54545
 
 # 4 miembros 
 pobgit2 %>% filter (tamhogar == "4 miembros") %>% 
-  summarise (sum(P50_num)) # Población 1332
+  summarise (sum(P50_num)) # Poblaci?n 1332
 
 pobgit2 %>% filter (tamhogar == "4 miembros") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) # 600 
 
 600/1332*100 # 45.04505
 
-# 5 miembros o más
-pobgit2 %>% filter (tamhogar == "5 miembros o más") %>% 
-  summarise (sum(P50_num)) # Población 3270
+# 5 miembros o m?s
+pobgit2 %>% filter (tamhogar == "5 miembros o m?s") %>% 
+  summarise (sum(P50_num)) # Poblaci?n 3270
 
-pobgit2 %>% filter (tamhogar == "5 miembros o más") %>% 
-  filter (P51_5 == "Sí") %>% 
+pobgit2 %>% filter (tamhogar == "5 miembros o m?s") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) # 1799 
 
 1799/3270*100 # 55.01529
 
 
-#POBREZA ENERGÉTICA POR SITUACIÓN DE ACTIVIDAD 
+#POBREZA ENERG?TICA POR SITUACI?N DE ACTIVIDAD 
 
 summary(pobgit2$P5) # Quien es la persona de referencia 
 
@@ -485,8 +487,8 @@ summary(pobgit2$P5) # Quien es la persona de referencia
 summary(pobgit2$P13) # Actividad principal si quien contesta la encuesta es la persona de referencia 
 
 #En caso que la persona de referencia sea otra
-# A2 - preguntas sobre la relación con la persona entrevistada 
-# A6 - actividad principal de la persona en cuestión 
+# A2 - preguntas sobre la relaci?n con la persona entrevistada 
+# A6 - actividad principal de la persona en cuesti?n 
 
 pobgit2$P5_car <- as.character(pobgit2$P5)
 pobgit2$P13_car <- as.character(pobgit2$P13)
@@ -505,14 +507,14 @@ pobgit2 <- pobgit2 %>% mutate(actp_yo = case_when(
 
 pobgit2$P5 <- revalue(pobgit2$P5, c("Es usted la persona de referencia" = "Es usted la persona de referencia", 
                       "Es su hijo/a" = "Hijo/a, hijastro/a", 
-                      "Es su nieto/a" = "Nieto/a, nieto políticoo/a (o pareja de los mismos)", 
+                      "Es su nieto/a" = "Nieto/a, nieto pol?ticoo/a (o pareja de los mismos)", 
                       "Es otro pariente" = "Otro pariente", 
-                      "Es su cónyuge/pareja" = "Cónyuge o pareja", 
+                      "Es su c?nyuge/pareja" = "C?nyuge o pareja", 
                       "Es su suegro/a" = "Suegro/a o pareja de los mismos", 
                       "Es su abuelo/a" = "Abuelo/a", 
                       "Otros no parientes" = "Sin parentesco con usted", 
                       "Es su padre/madre" = "Padre/Madre", 
-                      "Es su cuñado/a" = "Cuñado/a", 
+                      "Es su cu?ado/a" = "Cu?ado/a", 
                       "Es su sobrino/a" = "Sobrino/a", 
                       "Es su hermano/a" = "Hermano/a, hermanastro/a", 
                       "Es su yerno/nuera" = "Nuera/Yerno (o pareja del hijo/a, hijastro/a)", 
@@ -520,7 +522,7 @@ pobgit2$P5 <- revalue(pobgit2$P5, c("Es usted la persona de referencia" = "Es us
                       "NC" = "NC"
                       ))
 
-#Añadimos un level a los factores a comparar, para no obtener errores posteriormente por no coincidencia 
+#A?adimos un level a los factores a comparar, para no obtener errores posteriormente por no coincidencia 
 pobgit2$A1_02 <- fct_expand(pobgit2$A1_02,"Es usted la persona de referencia" )
 pobgit2$A2_02 <- fct_expand(pobgit2$A2_02,"Es usted la persona de referencia" )
 pobgit2$A3_02 <- fct_expand(pobgit2$A3_02,"Es usted la persona de referencia" )
@@ -588,7 +590,7 @@ view(pobgit3)
 class(pobgit3$act_p)
 
 #Comprobamos cuantos NA hemos obtenido 
-sum(is.na(pobgit3$act_p)) #Hay 10 NA, por lo tanto no son significativos en relación al total 
+sum(is.na(pobgit3$act_p)) #Hay 10 NA, por lo tanto no son significativos en relaci?n al total 
 
 
 pobgit3$act_p <- as.factor(pobgit3$act_p)
@@ -601,25 +603,25 @@ pobgit3$act_p <- fct_explicit_na(pobgit3$act_p, na_level = "Missing")
 
 pobgit3$act_p <- fct_collapse(pobgit3$act_p,
              ocupados=c("Baja por enfermedad o maternidad/paternidad","Trabajador/a en un negocio familiar","Trabajador/a por cuenta ajena (Contrato fijo)","Trabajador/a por cuenta ajena (Contrato temporal)","Trabajador/a por cuenta ajena (Fijo)","Trabajador/a por cuenta ajena sin contrato","Trabajador/a por cuenta propia","Trabajando en un negocio familiar","Trabajando por cuenta propia"),
-             parados=c("Parado/a","Parado/a, buscando primer empleo","Parado/a, que trabajó anteriormente"),
+             parados=c("Parado/a","Parado/a, buscando primer empleo","Parado/a, que trabaj? anteriormente"),
              jubilados=c("Jubilado o retirado del trabajo","Jubilado/a o retirado/a del trabajo"),
-             inactivos=c("Estudiando/realizando cursos de formación","Incapacitado/a permanente","Labores del hogar","Otra situación","Realizando sin remuneración trabajos sociales, actividades benéficas","Trabajo doméstico no remunerado"),
+             inactivos=c("Estudiando/realizando cursos de formaci?n","Incapacitado/a permanente","Labores del hogar","Otra situaci?n","Realizando sin remuneraci?n trabajos sociales, actividades ben?ficas","Trabajo dom?stico no remunerado"),
              other_level= "Missing")
 
 
-#Hogares que no pueden mantener el hogar a una temperatura adecuada según la actividad
+#Hogares que no pueden mantener el hogar a una temperatura adecuada seg?n la actividad
 table(pobgit3$act_p, pobgit3$P51_3)
 
-# Hogares con retrasos en las facturas según la actividad 
+# Hogares con retrasos en las facturas seg?n la actividad 
 table(pobgit3$act_p, pobgit3$P51_5)
 
-# % Población - TEMPERATURA INADECUADA  
+# % Poblaci?n - TEMPERATURA INADECUADA  
 
-#Población missing 
+#Poblaci?n missing 
 pobgit3 %>% filter (act_p == "Missing") %>% 
   summarise (sum(P50_num)) #72
 
-# Población ocupada
+# Poblaci?n ocupada
 pobgit3 %>% filter (act_p == "ocupados") %>% 
   summarise (sum(P50_num)) #2498 
 
@@ -629,7 +631,7 @@ pobgit3 %>% filter (act_p == "ocupados") %>%
 
 574/2498*100 #22.97838% No pueden mantener una temperatura adecuada 
 
-# Población parada
+# Poblaci?n parada
 pobgit3 %>% filter (act_p == "parados") %>% 
   summarise (sum(P50_num)) #1637 
 
@@ -639,7 +641,7 @@ pobgit3 %>% filter (act_p == "parados") %>%
 
 973/1637*100 #59.438% No pueden mantener una temperatura adecuada 
 
-#Población inactiva
+#Poblaci?n inactiva
 pobgit3 %>% filter (act_p == "inactivos") %>% 
   summarise (sum(P50_num)) #1151 
 
@@ -650,7 +652,7 @@ pobgit3 %>% filter (act_p == "inactivos") %>%
 584/1151*100 #50.73849% No pueden mantener una temperatura adecuada 
 
 
-#Población Jubilada
+#Poblaci?n Jubilada
 pobgit3 %>% filter (act_p == "jubilados") %>% 
   summarise (sum(P50_num)) #657 
 
@@ -661,104 +663,104 @@ pobgit3 %>% filter (act_p == "jubilados") %>%
 216/657*100 #32.87671% No pueden mantener una temperatura adecuada 
 
 
-# % Población - RETRASOS EN LOS PAGOS 
+# % Poblaci?n - RETRASOS EN LOS PAGOS 
 
-# Población ocupada
+# Poblaci?n ocupada
 pobgit3 %>% filter (act_p == "ocupados") %>% 
   summarise (sum(P50_num)) #2498 
 
 pobgit3 %>% filter (act_p == "ocupados") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #1104 #Tienen retrasos en los pagos 
 
 1104/2498*100 #44.19536% tienen retrasos en pagos 
 
-# Población parada
+# Poblaci?n parada
 pobgit3 %>% filter (act_p == "parados") %>% 
   summarise (sum(P50_num)) #1637 
 
 pobgit3 %>% filter (act_p == "parados") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #973 #Tienen retrasos en los pagos 
 
 973/1637*100 #59.438% tienen retrasos en pagos 
 
-#Población inactiva
+#Poblaci?n inactiva
 pobgit3 %>% filter (act_p == "inactivos") %>% 
   summarise (sum(P50_num)) #1151 
 
 pobgit3 %>% filter (act_p == "inactivos") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #698 #Tienen retrasos en los pagos 
 
 698/1151*100 #60.64292% tienen retrasos en pagos 
 
 
-#Población Jubilada
+#Poblaci?n Jubilada
 pobgit3 %>% filter (act_p == "jubilados") %>% 
   summarise (sum(P50_num)) #657 
 
 pobgit3 %>% filter (act_p == "jubilados") %>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #332 #Tienen retrasos en los pagos 
 
 332/657*100 #50.53272% tienen retrasos en pagos 
 
 
-# POBREZA ENERGÉTICA EN FUNCIÓN DEL TIPO DE HOGAR 
+# POBREZA ENERG?TICA EN FUNCI?N DEL TIPO DE HOGAR 
 
-# Hogares con un miembro de más de 65 años 
+# Hogares con un miembro de m?s de 65 a?os 
 
 class(pobgit3$P1)
 class(pobgit3$A1_04_num)
 
 pobgit3 <- pobgit3 %>% mutate(miembro_mayor = case_when(
-  P1 >= 65 ~ 'Sí', 
-  A1_04_num >= 65 ~ 'Sí',
-  A2_04_num >= 65 ~ 'Sí',
-  A3_04_num >= 65 ~ 'Sí',
-  A4_04_num >= 65 ~ 'Sí',
-  A5_04_num >= 65 ~ 'Sí',
-  A6_04_num >= 65 ~ 'Sí',
-  A7_04_num >= 65 ~ 'Sí',
-  A8_04_num >= 65 ~ 'Sí',
-  A9_04_num >= 65 ~ 'Sí',
-  A10_04_num >= 65 ~  'Sí',
+  P1 >= 65 ~ 'S?', 
+  A1_04_num >= 65 ~ 'S?',
+  A2_04_num >= 65 ~ 'S?',
+  A3_04_num >= 65 ~ 'S?',
+  A4_04_num >= 65 ~ 'S?',
+  A5_04_num >= 65 ~ 'S?',
+  A6_04_num >= 65 ~ 'S?',
+  A7_04_num >= 65 ~ 'S?',
+  A8_04_num >= 65 ~ 'S?',
+  A9_04_num >= 65 ~ 'S?',
+  A10_04_num >= 65 ~  'S?',
   TRUE ~ 'No'
 ))
 
 pobgit3$miembro_mayor <- as.factor(pobgit3$miembro_mayor)
 class(pobgit3$miembro_mayor)
-summary(pobgit3$miembro_mayor) #263 hogares tienen un miembro de más de 65 años
+summary(pobgit3$miembro_mayor) #263 hogares tienen un miembro de m?s de 65 a?os
 
-# Población Hogares con una persona +65 con temperatura inadecuada 
+# Poblaci?n Hogares con una persona +65 con temperatura inadecuada 
 
-pobgit3 %>% filter (miembro_mayor == "Sí") %>% 
+pobgit3 %>% filter (miembro_mayor == "S?") %>% 
   summarise (sum(P50_num)) #891 personas viven hogares con personas de +65
 
-pobgit3 %>% filter (miembro_mayor == "Sí") %>% 
+pobgit3 %>% filter (miembro_mayor == "S?") %>% 
   filter (P51_3 == "No") %>% 
   summarise (sum(P50_num)) # 291 personas no pueden mantener la temp 
 
 291/891*100 #32.65993% No pueden mantener una temperatura adecuada 
 
 
-# Población Hogares con una persona +65 con retrasos en el pago de facturas 
-pobgit3 %>% filter (miembro_mayor == "Sí") %>% 
+# Poblaci?n Hogares con una persona +65 con retrasos en el pago de facturas 
+pobgit3 %>% filter (miembro_mayor == "S?") %>% 
   summarise (sum(P50_num)) #891 personas viven hogares con personas de +65
 
-pobgit3 %>% filter (miembro_mayor == "Sí") %>% 
-  filter (P51_5 == "Sí") %>% 
+pobgit3 %>% filter (miembro_mayor == "S?") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) # 425 personas tienen retrasos en el pago de facturas
 
 425/891*100 #47.69921% tienen retrasos en el pago de facturas
 
 
-# Hogares con dos adultos sin hijos con almenos uno de ellos de más de 65 años 
+# Hogares con dos adultos sin hijos con almenos uno de ellos de m?s de 65 a?os 
 
 pobgit3 <- pobgit3 %>% mutate(pareja_mayor = case_when(
-  P1 >= 65 ~ 'Sí', 
-  A1_04_num <= 65 ~ 'Sí',
+  P1 >= 65 ~ 'S?', 
+  A1_04_num <= 65 ~ 'S?',
   TRUE ~ 'No'
 ))
 
@@ -766,18 +768,18 @@ pobgit3$pareja_mayor <- as.factor(pobgit3$pareja_mayor)
 summary(pobgit3$pareja_mayor)
 
 pobgit4 <- pobgit3 %>%  filter (P50_num == 2)
-summary(pobgit4$pareja_mayor) # 231  hogares con dos adultos con almenos uno de ellos de más de 65 años
+summary(pobgit4$pareja_mayor) # 231  hogares con dos adultos con almenos uno de ellos de m?s de 65 a?os
 
-#Total población de adultos con almenos uno de ellos de más de 65 años
-pobgit3 %>%  filter (P50_num == 2) %>% filter (pareja_mayor == "Sí")%>% summarise (sum(P50_num)) #462 personas 
+#Total poblaci?n de adultos con almenos uno de ellos de m?s de 65 a?os
+pobgit3 %>%  filter (P50_num == 2) %>% filter (pareja_mayor == "S?")%>% summarise (sum(P50_num)) #462 personas 
 
-#Población de parejas+65 con temperatura inadecuada 
-pobgit3 %>%  filter (P50_num == 2) %>% filter (pareja_mayor == "Sí")%>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) #164
+#Poblaci?n de parejas+65 con temperatura inadecuada 
+pobgit3 %>%  filter (P50_num == 2) %>% filter (pareja_mayor == "S?")%>% filter (P51_3 == "No") %>% summarise (sum(P50_num)) #164
 
 164/462*100 #35.49784% tienen temp inadecuada
 
-#Población de parejas+65 con temperatura inadecuada 
-pobgit3 %>%  filter (P50_num == 2) %>% filter (pareja_mayor == "Sí")%>% filter (P51_5 == "Sí") %>% summarise (sum(P50_num)) #212
+#Poblaci?n de parejas+65 con temperatura inadecuada 
+pobgit3 %>%  filter (P50_num == 2) %>% filter (pareja_mayor == "S?")%>% filter (P51_5 == "S?") %>% summarise (sum(P50_num)) #212
 
 212/462*100 #45.88745% tienen retrasos en pagos 
 
@@ -795,63 +797,63 @@ pobgit3 <- pobgit3 %>% mutate(monoparental = case_when(
   A8_04_num > 18 ~ 'No',
   A9_04_num > 18 ~ 'No',
   A10_04_num > 18 ~  'No',
-  TRUE ~ 'Sí'
+  TRUE ~ 'S?'
 ))
 
 pobgit3$monoparental <- as.factor(pobgit3$monoparental)
 summary(pobgit3$monoparental) #70 hogares son monoparental o monoparental
 
-pobgit3 %>% filter(monoparental == "Sí") %>% summarise (sum(P50_num)) #población de 261
+pobgit3 %>% filter(monoparental == "S?") %>% summarise (sum(P50_num)) #poblaci?n de 261
 
 
-#Población monoparental (ambos sexos) con temperatura inadecuada 
+#Poblaci?n monoparental (ambos sexos) con temperatura inadecuada 
 pobgit3 %>%
-  filter (monoparental == "Sí") %>% 
+  filter (monoparental == "S?") %>% 
   filter (P51_3 == "No") %>% 
   summarise (sum(P50_num)) #130
 
 130/261*100 #49.80843% tienen temp inadecuada
 
-#Población monoparental (ambos sexos) con retrasos en los pagos
-pobgit3 %>%  filter (monoparental == "Sí") %>% filter (P51_5 == "Sí") %>% summarise (sum(P50_num)) #158
+#Poblaci?n monoparental (ambos sexos) con retrasos en los pagos
+pobgit3 %>%  filter (monoparental == "S?") %>% filter (P51_5 == "S?") %>% summarise (sum(P50_num)) #158
 
 158/261*100 #60.5364% tienen retrasos en pagos 
 
-#Población monoMARENTAL con temperatura inadecuada 
+#Poblaci?n monoMARENTAL con temperatura inadecuada 
 pobgit3 %>% 
-  filter(monoparental == "Sí") %>% 
+  filter(monoparental == "S?") %>% 
   filter (P2 == "Mujer") %>% 
-  summarise (sum(P50_num)) #Población monomarental 154 
+  summarise (sum(P50_num)) #Poblaci?n monomarental 154 
 
 pobgit3 %>%
   filter (P2 == "Mujer") %>%
-  filter (monoparental == "Sí") %>% 
+  filter (monoparental == "S?") %>% 
   filter (P51_3 == "No") %>% 
   summarise (sum(P50_num)) #76
 
 76/154*100 #49.35065% tienen temp inadecuada
 
-#Población monoMARENTAL con retrasos en los pafos
+#Poblaci?n monoMARENTAL con retrasos en los pafos
 pobgit3 %>%  
   filter (P2 == "Mujer") %>%
-  filter (monoparental == "Sí")%>% 
-  filter (P51_5 == "Sí") %>% 
+  filter (monoparental == "S?")%>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #98
 
 98/154*100 #63.63636% tienen retrasos en pagos 
 
-#OTRAS VARIABLES DE CARACTERIZACIÓN 
+#OTRAS VARIABLES DE CARACTERIZACI?N 
 
 # Densidad poblacional 
 
 summary(pobgit2$TAMANO)
 
-#Hemos creado una tabla de datos para POBLACIÓN 
+#Hemos creado una tabla de datos para POBLACI?N 
 pobgit_poblacion <- as.data.frame(lapply(pobgit2, rep, pobgit2$P50_num))
 
 glimpse(df_1)
 
-#Población total según densidad poblacional 
+#Poblaci?n total seg?n densidad poblacional 
 
 t_densidad_pob <- prop.table(table(pobgit_poblacion$TAMANO))*100
 write.table(t_densidad_pob, file= "densidad_pob.csv", sep=",")
@@ -915,14 +917,14 @@ x <- prop.table(x)
 
 write.csv(x, file="Prueba1.csv")
 
-#Población afectada temp inadecuada según perfil de familia 
+#Poblaci?n afectada temp inadecuada seg?n perfil de familia 
 levels(pobgit2$U2) #Tiene 8 niveles, los simplificaremos a 4 almenos 
 summary(pobgit2$U2s)
 
 pobgit2$U2s <- fct_collapse(pobgit2$U2, 
                            'Muy pobre/Marginal' = c("Marginal","Muy pobre"),
-                           'Pobre/Humilde' = c("Pobre","Se las apañan"), 
-                           'Confortable/Próspera' = c("Confortable, por encima de la media","Próspera, acomodada"), 
+                           'Pobre/Humilde' = c("Pobre","Se las apa?an"), 
+                           'Confortable/Pr?spera' = c("Confortable, por encima de la media","Pr?spera, acomodada"), 
                            'NS/NC' = c("NS","NC"))
 
 pobgit2 %>%  
@@ -940,7 +942,7 @@ pobgit2 %>%
 1034/3628*100 #28.50055
 
 pobgit2 %>%  
-  filter( U2s == "Confortable/Próspera") %>%
+  filter( U2s == "Confortable/Pr?spera") %>%
   filter (P51_3 == "No") %>% 
   summarise (sum(P50_num)) #47 / 574
 
@@ -953,43 +955,43 @@ pobgit2 %>%
 
 85/225*100 #4.7196
 
-#Porcentaje de población total según perfil familiar 
+#Porcentaje de poblaci?n total seg?n perfil familiar 
 
 1588/6015*100 # 26.40067% Marginal/Muy pobre
 3628/6015*100 # 60.31588 Pobre Humilde
 574/6015*100 # 9.54281 Confortable 
 225/6015*100 # 3.740648 NS/NC
 
-#Retrasos en el pago de facturas según perfil familiar
+#Retrasos en el pago de facturas seg?n perfil familiar
 
 pobgit2 %>%  
-  filter (P51_5 == "Sí") %>% 
-  summarise (sum(P50_num)) #3128 de 6015 - población afectada por temp. inadecuada 
+  filter (P51_5 == "S?") %>% 
+  summarise (sum(P50_num)) #3128 de 6015 - poblaci?n afectada por temp. inadecuada 
 
 pobgit2 %>%  
   filter( U2s == "Muy pobre/Marginal") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #992 /poblacion total 1588
 
 992/1588*100 #62.46851
 
 pobgit2 %>%  
   filter( U2s == "Pobre/Humilde") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #1896 /3628
 
 1896/3628*100 #52.2602
 
 pobgit2 %>%  
-  filter( U2s == "Confortable/Próspera") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter( U2s == "Confortable/Pr?spera") %>%
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #160 / 574
 
 160/574*100 # 27.87456
 
 pobgit2 %>%  
   filter( U2s == "NS/NC") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #80/225 
 
 80/225*100 #35.55556
@@ -1007,7 +1009,7 @@ pobgit2$U1s <- fct_collapse(pobgit2$U1,
                             'NS' = "NS")
 summary(pobgit2$U1s)
 
-#Temperatura inadecuada según perfil del barrio
+#Temperatura inadecuada seg?n perfil del barrio
 pobgit2 %>%  
   filter (P51_3 == "No") %>% 
   summarise (sum(P50_num)) #1801
@@ -1054,55 +1056,55 @@ pobgit2 %>%
 
 53/164*100 #32.31707
 
-#Retrasos en el pago de facturas según perfil del barrio
+#Retrasos en el pago de facturas seg?n perfil del barrio
 
 pobgit2 %>%  
-  filter (P51_5 == "Sí") %>% 
-  summarise (sum(P50_num)) #3128 de 6015 - población afectada por temp. inadecuada 
+  filter (P51_5 == "S?") %>% 
+  summarise (sum(P50_num)) #3128 de 6015 - poblaci?n afectada por temp. inadecuada 
 
 pobgit2 %>%  
   filter( U1s == "Zona Rural") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #117 /186
 
 117/186*100 # 62.90323
 
 pobgit2 %>%  
   filter( U1s == "Suburbio/Zona Marginal") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #731/1572
 
 731/1572*100 #46.50127 
 
 pobgit2 %>%  
   filter( U1s == "Barrio obrero") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #1580 / 2945
 
 1580/2945*100 # 53.65025
 
 pobgit2 %>%  
   filter( U1s == "Barrio Antiguo") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #547/1094 
 
 547/1094*100 #50
 
 pobgit2 %>%  
   filter( U1s == "Zona Residencial Media/Alta") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #23/56 
 
 23/56*100 #41.07143
 
 pobgit2 %>%  
   filter( U1s == "NS") %>%
-  filter (P51_5 == "Sí") %>% 
+  filter (P51_5 == "S?") %>% 
   summarise (sum(P50_num)) #130/164 
 
 130/164*100 #79.26829
 
-#Porcentaje de población total según perfil de barrio
+#Porcentaje de poblaci?n total seg?n perfil de barrio
 
 186/6015*100 # Zona Rural 3.092269
 1572/6015*100 # Suburbio/ Zona Marginal 26.13466
