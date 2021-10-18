@@ -123,7 +123,15 @@ foessa2 <- foessa2018 %>% select(CCAA = CCAA,
                                  dispone_internet = F82_B_15, 
                                  dispone_tv = F82_B_12, 
                                  ingresos_calidad = INGR_CALIDAD, 
-                                 ruina = F78_1
+                                 ruina = F78_1, 
+                                 discrim_etnia = I115_1, 
+                                 discrim_mujer = I115_2, 
+                                 discrim_fisico= I115_3, 
+                                 discrim_sexual = I115_4, 
+                                 discrim_nunca = I115_5, 
+                                 discrim_nosabe = I115_9, 
+                                 discrim_nocont = I115_0, 
+                                 proteina = F82_B_17
                                  )
 
 
@@ -1613,7 +1621,21 @@ crear_grafico(x = salud_rec,
               xtitle = "Estado de salud")
 ```
 
-### Reducción del gasto en alimentación 
+### Impactos sobre la alimentación 
+
+#### Dieta inadecuada  
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "dieta_inadec", "Vulnerabilidad energética y dieta inadecuada", "Dieta inadecuada", 2)
+
+```
+```{r}
+crear_grafico(x = dieta_inadec, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y dieta inadecuada", 
+              xtitle = "Dieta inadecuada")
+```
+
+#### Reducción del gasto en alimentación 
 
 ```{r}
 levels(foessa2$reducir_galim)
@@ -1627,6 +1649,20 @@ crear_grafico(x = reducir_galim,
               title = "Vulnerabilidad energética y reducción del gasto en alimentación", 
               xtitle = "Reducción del gasto en alimentación")
 ```
+#### No poder comer carne, pollo o pescado al menos cada dos días 
+
+```{r}
+crear_tabla("Vulnerabilidad_Energetica", "proteina", "Vulnerabilidad energética y afectación en la alimentación", "No poder comer carne, pollo o pescado al menos cada dos días", 2)
+
+```
+```{r}
+crear_grafico(x = proteina, 
+              y = Vulnerabilidad_Energetica, 
+              title = "Vulnerabilidad energética y afectación en la alimentación", 
+              xtitle = "No poder comer carne, pollo o pescado al menos cada dos días")
+```
+
+
 
 ### Reducción del gasto en ocio 
 
@@ -1659,16 +1695,37 @@ crear_grafico(x = perdida_relaciones,
               xtitle = "Pérdida de relaciones sociales")
 ```
 
-### Dieta inadecuada  
+### Discriminación 
+
+En primer lugar creamos una variable general sobre discriminación que agrupe las personas que han expresado haberse sentido discriminadas por alguna de las siguientes causas: etnia o raza, aspecto físico, por ser mujer o por su orientación sexual. Todas las personas que han expresado no haberse sentido nunca discriminadas o bien que no han contestado a la pregunta, se considera que no han sido discriminadas. 
+
 ```{r}
-crear_tabla("Vulnerabilidad_Energetica", "dieta_inadec", "Vulnerabilidad energética y dieta inadecuada", "Dieta inadecuada", 2)
+
+class(foessa2$discrim_etnia)
+
+foessa2 <- foessa2 %>% mutate(discriminacion = case_when(
+  discrim_etnia == "Sí" ~ "Sí", 
+  discrim_fisico == "Sí" ~ "Sí", 
+  discrim_mujer == "Sí" ~ "Sí", 
+  discrim_sexual == "Sí" ~ "Sí", 
+  discrim_nunca == "No" ~ "No", 
+  TRUE ~ "No"
+))
+
+foessa2$discriminacion <- as.factor(foessa2$discriminacion)
 
 ```
+
+Una vez disponemos de la variable, crearemos las tablas básicas de análisis: 
+
 ```{r}
-crear_grafico(x = dieta_inadec, 
+crear_tabla("Vulnerabilidad_Energetica", "discriminacion", "Vulnerabilidad energética y discriminación", "Haberse sentido discriminado/a", 2)
+```
+```{r}
+crear_grafico(x = discriminacion, 
               y = Vulnerabilidad_Energetica, 
-              title = "Vulnerabilidad energética y dieta inadecuada", 
-              xtitle = "Dieta inadecuada")
+              title = "Vulnerabilidad energética y discriminación", 
+              xtitle = "Haberse sentido discriminado/a")
 ```
 
 
