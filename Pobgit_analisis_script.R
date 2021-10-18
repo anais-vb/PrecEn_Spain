@@ -1112,3 +1112,45 @@ pobgit2 %>%
 1094/6015*100 # Barrio Antiguo 18.18786
 56/6015*100 # Zona residencial media/alta 0.9310058
 164/6015*100 # NSNC 2.726517
+
+# APUNTES VARIOS 
+
+
+# Vamos a probar a transformar las variables a copiar en character en vez de factor... 
+pobgit3 <- pobgit2
+str(pobgit3)
+
+pobgit3$P13 <- as.character(pobgit3$P13)
+pobgit3$P5 <- as.character(pobgit3$P5)
+pobgit3$A1_06 <- as.character(pobgit3$A1_06)
+pobgit3$A2_06 <- as.character(pobgit3$A2_06)
+pobgit3$A3_06 <- as.character(pobgit3$A3_06)
+pobgit3$A4_06 <- as.character(pobgit3$A4_06)
+pobgit3$A5_06 <- as.character(pobgit3$A5_06)
+pobgit3$A6_06 <- as.character(pobgit3$A6_06)
+pobgit3$A7_06 <- as.character(pobgit3$A7_06)
+pobgit3$A8_06 <- as.character(pobgit3$A8_06)
+pobgit3$A9_06 <- as.character(pobgit3$A9_06)
+pobgit3$A10_06 <- as.character(pobgit3$A10_06)
+pobgit3$A1_02 <- as.character(pobgit3$A1_02)
+pobgit3$A2_02 <- as.character(pobgit3$A2_02)
+pobgit3$A3_02 <- as.character(pobgit3$A3_02)
+pobgit3$A4_02 <- as.character(pobgit3$A4_02)
+pobgit3$A5_02 <- as.character(pobgit3$A5_02)
+pobgit3$A6_02 <- as.character(pobgit3$A6_02)
+pobgit3$A7_02 <- as.character(pobgit3$A7_02)
+pobgit3$A8_02 <- as.character(pobgit3$A8_02)
+pobgit3$A9_02 <- as.character(pobgit3$A9_02)
+pobgit3$A10_02 <- as.character(pobgit3$A10_02)
+
+
+class(pobgit3$P5)
+levels(pobgit3$P13)
+levels(pobgit3$A1_06)
+levels(pobgit3$A1_02)
+
+pobgit2$Barrio <- as.factor(pobgit2$Barrio)
+levels(pobgit2$MUNICIPIO)
+levels(pobgit2$Barrio)
+
+pobgit2 %>% filter(Barrio == "Ajujar                   ") %>% View()

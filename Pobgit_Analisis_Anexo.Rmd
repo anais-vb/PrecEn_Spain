@@ -1035,7 +1035,7 @@ crear_grafico_ret(x = monomarental, #variable independiente
 
 ## Dimensión 2: Características socioeconómicas e indicadores relativos a ingresos familiares  
 
-### Vulnerabilidad Energética según quintil de renda 
+### Pobreza Energética según quintil de renda 
 
 En el apartado de preparación de datos, hemos creado una variable específica sobre los ingresos equivalentes del hogar divididos en quintiles. En esta sección relacionaremos esta variable con los principales indicadores de pobreza y vulnerabilidad energética. 
 
@@ -1069,7 +1069,7 @@ crear_grafico_temp(x = quintiles_ingresos, #variable independiente
                     xtitle = "Quintiles de ingresos equivalentes") # título axis X 
 ```
 
-### Vulnerabilidad energética y nivel de ingresos equivalentes 
+### Pobreza energética y nivel de ingresos equivalentes 
 A continuación, veremos gráficos representativos entre la relación entre temperatura adecuada en el hogar y los ingresos equivalentes de la unidad familiar. 
 
 ```{r}
@@ -1102,7 +1102,7 @@ g2
 
 ```
 
-### Vulnerabilidad y precariedad energética en función de la situación de ocupación de la persona de referencia del hogar
+### Pobreza energética en función de la situación de ocupación de la persona de referencia del hogar
 
 Un segundo indicador relevante en relación con la dimensión económica es el impacto de pobreza energética en función de la situación de ocupación de la persona de referencia del hogar. Para analizar esta relación, usaremos la variable `ppalocupacion` que crearemos a partir de la variable `P5`.
 
@@ -1164,41 +1164,40 @@ levels(pobgit2$P5)
 
 levels(pobgit2$A9_02)
 
-# Vamos a probar a transformar las variables a copiar en character en vez de factor... 
-pobgit3 <- pobgit2
-str(pobgit3)
-
-pobgit3$P13 <- as.character(pobgit3$P13)
-pobgit3$P5 <- as.character(pobgit3$P5)
-pobgit3$A1_06 <- as.character(pobgit3$A1_06)
-pobgit3$A2_06 <- as.character(pobgit3$A2_06)
-pobgit3$A3_06 <- as.character(pobgit3$A3_06)
-pobgit3$A4_06 <- as.character(pobgit3$A4_06)
-pobgit3$A5_06 <- as.character(pobgit3$A5_06)
-pobgit3$A6_06 <- as.character(pobgit3$A6_06)
-pobgit3$A7_06 <- as.character(pobgit3$A7_06)
-pobgit3$A8_06 <- as.character(pobgit3$A8_06)
-pobgit3$A9_06 <- as.character(pobgit3$A9_06)
-pobgit3$A10_06 <- as.character(pobgit3$A10_06)
-pobgit3$A1_02 <- as.character(pobgit3$A1_02)
-pobgit3$A2_02 <- as.character(pobgit3$A2_02)
-pobgit3$A3_02 <- as.character(pobgit3$A3_02)
-pobgit3$A4_02 <- as.character(pobgit3$A4_02)
-pobgit3$A5_02 <- as.character(pobgit3$A5_02)
-pobgit3$A6_02 <- as.character(pobgit3$A6_02)
-pobgit3$A7_02 <- as.character(pobgit3$A7_02)
-pobgit3$A8_02 <- as.character(pobgit3$A8_02)
-pobgit3$A9_02 <- as.character(pobgit3$A9_02)
-pobgit3$A10_02 <- as.character(pobgit3$A10_02)
+str(pobgit2$P13)
 
 
-class(pobgit3$P5)
-levels(pobgit3$P13)
-levels(pobgit3$A1_06)
-levels(pobgit3$A1_02)
+# Convertimos las variables a character para poder manipularlas con mayor precisión posteriormente
+
+pobgit2 <- pobgit2 %>% mutate_at(c(
+                        "P13", 
+                        "P5", 
+                        "A1_06", 
+                        "A2_06",
+                        "A3_06",
+                        "A4_06",
+                        "A5_06",
+                        "A6_06",
+                        "A7_06",
+                        "A8_06",
+                        "A9_06",
+                        "A10_06",
+                        "A1_02",
+                        "A2_02",
+                        "A3_02",
+                        "A4_02",
+                        "A5_02",
+                        "A6_02",
+                        
+                        "A7_02",
+                        "A8_02",
+                        "A9_02",
+                        "A10_02"), as.character)
+
+head(pobgit2$P13)
   
 #Creamos una nueva variable con la actividad principal de la persona de referencia en el hogar (act_p)
-pobgit3 <- pobgit3 %>% mutate(act_p = ifelse(P5 == "Es usted la persona de referencia", P13, ifelse(
+pobgit2 <- pobgit2 %>% mutate(act_p = ifelse(P5 == "Es usted la persona de referencia", P13, ifelse(
   P5 == A1_02, A1_06, ifelse(
     P5 == A2_02, A2_06, ifelse(
       P5 == A3_02, A3_06, ifelse(
@@ -1210,29 +1209,411 @@ pobgit3 <- pobgit3 %>% mutate(act_p = ifelse(P5 == "Es usted la persona de refer
                   P5 == A9_02, A9_06, ifelse(
                     P5 == A10_02, A10_06, NA))))))))))))
 
-view(pobgit3)
-class(pobgit3$act_p)
+class(pobgit2$act_p)
 
 #Comprobamos cuantos NA hemos obtenido 
-sum(is.na(pobgit3$act_p)) #Hay 10 NA, por lo tanto no son significativos en relaci?n al total 
+sum(is.na(pobgit2$act_p)) #Hay 10 NA, por lo tanto no son significativos en relaci?n al total 
 
-
-pobgit3$act_p <- as.factor(pobgit3$act_p)
-levels(pobgit3$act_p) # Ahora mismo hay 22 levels que debemos recodificar a ocupados, parados, jubilados, inactivos 
+pobgit2$act_p <- as.factor(pobgit2$act_p)
+levels(pobgit2$act_p) # Ahora mismo hay 22 levels que debemos recodificar a ocupados, parados, jubilados, inactivos 
 
 # Inactivos incluira las situaciones de inactividad reconocidas por el INE que no son jubilados: estudiantes, pensionistas no jubilados, incapacitados, labores del hogar... 
 
-pobgit3$act_p <- fct_explicit_na(pobgit3$act_p, na_level = "Missing")
+pobgit2$act_p <- fct_explicit_na(pobgit2$act_p, na_level = "Missing")
 
 
-pobgit3$act_p <- fct_collapse(pobgit3$act_p,
-             ocupados=c("Baja por enfermedad o maternidad/paternidad","Trabajador/a en un negocio familiar","Trabajador/a por cuenta ajena (Contrato fijo)","Trabajador/a por cuenta ajena (Contrato temporal)","Trabajador/a por cuenta ajena (Fijo)","Trabajador/a por cuenta ajena sin contrato","Trabajador/a por cuenta propia","Trabajando en un negocio familiar","Trabajando por cuenta propia"),
-             parados=c("Parado/a","Parado/a, buscando primer empleo","Parado/a, que trabajó anteriormente"),
-             jubilados=c("Jubilado o retirado del trabajo","Jubilado/a o retirado/a del trabajo"),
-             inactivos=c("Estudiando/realizando cursos de formación","Incapacitado/a permanente","Labores del hogar","Otra situación","Realizando sin remuneración trabajos sociales, actividades benéficas","Trabajo doméstico no remunerado"),
-             other_level= "Missing")
+pobgit2$act_p <- fct_collapse(pobgit2$act_p,
+             ocupada =c("Baja por enfermedad o maternidad/paternidad","Trabajador/a en un negocio familiar","Trabajador/a por cuenta ajena (Contrato fijo)","Trabajador/a por cuenta ajena (Contrato temporal)","Trabajador/a por cuenta ajena (Fijo)","Trabajador/a por cuenta ajena sin contrato","Trabajador/a por cuenta propia","Trabajando en un negocio familiar","Trabajando por cuenta propia"),
+             parada =c("Parado/a","Parado/a, buscando primer empleo","Parado/a, que trabajó anteriormente"),
+             jubilada =c("Jubilado o retirado del trabajo","Jubilado/a o retirado/a del trabajo"),
+             inactiva =c("Estudiando/realizando cursos de formación","Incapacitado/a permanente","Labores del hogar","Otra situación","Realizando sin remuneración trabajos sociales, actividades benéficas","Trabajo doméstico no remunerado"),
+             other_level = "Valores perdidos")
+
+```
+Una vez hemos creado una variable simplificada, creamos una tabla de frecuencia de la nueva variable para conocer mejor su distribución: 
+
+```{r}
+tabla_indicador(x = pobgit2$act_p, 
+                t = "Actividad de la persona principal en la unidad familiar")
+```
+A continuación, pondremos en relación esta variable con los dos indicadores consensuales de pobreza energética: 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="act_p", # variable independiente
+            title = "Temperatura inadecuada en el hogar y actividad de la persona de referencia de la unidad familiar", # título de la tabla 
+            varname = "Actividad de la persona de referencia", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+```
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="act_p", # variable independiente
+            title = "Retrasos en el pago de facturas del hogar y actividad de la persona de referencia de la unidad familiar", # título de la tabla 
+            varname = "Actividad de la persona de referencia", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+```
+Finalmente creamos los gráficos que representan los datos mostrados en las dos tablas de contingencia anteriores. 
+
+```{r}
+crear_grafico_temp(x = act_p, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura adecada en el hogar", # título del gráfico
+                    xtitle = "Actividad de la persona de referencia de la unidad familiar") # título axis X 
 ```
 
 
+```{r}
+crear_grafico_ret(x = act_p, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en las facturas del hogar", # título del gráfico
+                    xtitle = "Actividad de la persona de referencia de la unidad familiar") # título axis X 
+```
+
+### Pobreza energética y miembros de la unidad familiar en situación de desocupación 
+
+Para crear una variable que nos indique la existencia de una persona parada/ en situación de desocupación, utilizaremos las siguientes variables de la base de datos inicial: 
+* Variable `P13` que nos indica la situación laboral de la persona que contesta la encuesta 
+* El conjunto de variables `AX_06` que nos indican la situación laboral de los miembros de la unidad familiar 
+
+```{r}
+
+pobgit2 <- pobgit2 %>% mutate_at(c(
+                        "P13", 
+                        "A1_06", 
+                        "A2_06",
+                        "A3_06",
+                        "A4_06",
+                        "A5_06",
+                        "A6_06",
+                        "A7_06",
+                        "A8_06",
+                        "A9_06",
+                        "A10_06"), as.character)
 
 
+
+pobgit2 <- pobgit2 %>% mutate(parado = case_when(
+  P13 == "Parado/a" ~ "Sí", 
+  A1_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A1_06 == "Parado/a, que trabajó anteriormente" ~ "Sí", 
+  A2_06 == "Parado/a, buscando primer empleo"~ "Sí", 
+  A2_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A3_06 == "Parado/a, buscando primer empleo"~ "Sí", 
+  A3_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A4_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A4_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A5_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A5_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A6_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A6_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A7_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A7_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A8_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A8_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A9_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A9_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  A10_06 == "Parado/a, buscando primer empleo" ~ "Sí", 
+  A10_06 == "Parado/a, que trabajó anteriormente" ~ "Sí",
+  TRUE ~ "No" 
+))
+
+
+pobgit2$parado <- as.factor(pobgit2$parado)
+
+tabla_indicador(x = pobgit2$parado,
+                t = "Unidades familiares con algun miembro desocupado")
+
+
+```
+Una vez hemos creado la variable para identificar las unidades familiares con algun miembro en situaci´n de desocupación, pondremos en relación esta variable con nuestros indicadores de referencia de pobreza energética. 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="parado", # variable independiente
+            title = "Temperatura inadecuada en el hogar y hogares con alguna persona parada", # título de la tabla 
+            varname = "Hogares con algun miembro desocupado", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="parado", # variable independiente
+            title = "Retrasos en el pago de facturas del hogar y hogares con alguna persona parada", # título de la tabla 
+            varname = "Hogares con algun miembro desocupado", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+Una vez creadas las tablas, construiremos los gráficos para representar las relaciones expuestas en las tablas anteriores. 
+
+```{r}
+crear_grafico_ret(x = parado, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en las facturas del hogar", # título del gráfico
+                    xtitle = "Hogares con algun miembro desocupado") # título axis X 
+```
+
+```{r}
+crear_grafico_temp(x = parado, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura inadecuada en el hogar", # título del gráfico
+                    xtitle = "Hogares con algun miembro desocupado") # título axis X 
+```
+
+## Dimensión 3: Características del entorno urbano 
+
+### Pobreza energética y tipo de barrio
+Para analizar esta variable usaremos la variable `U1` de la encuesta que nos indica el `Tipo de barrio`. Para poder comparar estos datos con los datos generales de la encuesta EINSFOESSA, reduciremos las respuestas para adaptarlas. 
+
+La encuesta EINSFOESSA incluye esta variable con las siguientes categorías: 
+*Zona marginal
+*Barrio o zona deteriorado
+*Barrio o zona en buenas condiciones
+*Zona de clase de media-alta
+
+La encuesta sobre condiciones de empleo del pueblo gitano incluye la variable con las siguientes categorías: 
+*Viviendas diseminadas o zona rural  
+*Suburbio, zona marginal            
+*Barrio obrero deteriorado          
+*Barrio antiguo deteriorado         
+*Barrio obrero en buenas condiciones
+*Barrio antiguo en buenas condiciones
+*Zona residencial de nivel medio
+*Zona residencial de clase alta
+
+Con el objetivo de simplificar las categorías existentes, se propone la siguiente distribución: 
+
+| Variable inicial (FSG)               	| Nueva variable (FSG)                	|
+|--------------------------------------	|-------------------------------------	|
+| Viviendas diseminadas o zona rural   	| NSNC                                	|
+| Suburbio, zona marginal              	| Zona marginal                       	|
+| Barrio obrero deteriorado            	| Barrio o zona deteriorado           	|
+| Barrio antiguo deteriorado           	| Barrio o zona deteriorado           	|
+| Barrio obrero en buenas condiciones  	| Barrio o zona en buenas condiciones 	|
+| Barrio antiguo en buenas condiciones 	| Barrio o zona en buenas condiciones 	|
+| Zona residencial de nivel medio      	| Zona de clase de media-alta         	|
+| Zona residencial de clase alta       	| Zona de clase de media-alta         	|
+
+
+```{r}
+
+pobgit2$tipo_barrio <- fct_collapse(pobgit2$U1, 
+                                    "Marginal" = "Suburbio, zona marginal", 
+                                    "Deteriorada" = c("Barrio obrero deteriorado", "Barrio antiguo deteriorado"), 
+                                    "Buenas condiciones" = c("Barrio obrero en buenas condiciones", "Barrio antiguo en buenas condiciones"), 
+                                    "Clase de media-alta" = c("Zona residencial de nivel medio", "Zona residencial de clase alta"), 
+                                    other_level = "Otros")
+
+tabla_indicador(x = pobgit2$tipo_barrio, 
+                t = "Tipo de barrio")
+
+```
+Una vez disponemos de una variable comparable para determinar el tipo de barrio, pondremos en relación esta variable con los dos indicadores disponibles de pobreza energética para esta encuesta. 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="tipo_barrio", # variable independiente
+            title = "Temperatura adecuada en el hogar según tipo de barrio", # título de la tabla 
+            varname = "Tipo de barrio", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+```
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="tipo_barrio", # variable independiente
+            title = "Retrasos en el pago de gastos del hogar según tipo de barrio", # título de la tabla 
+            varname = "Tipo de barrio", # Variable independiente
+            numcol = 5) # Número de valores de la variable independiente 
+```
+
+```{r}
+crear_grafico_ret(x = tipo_barrio, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en las facturas del hogar", # título del gráfico
+                    xtitle = "Tipo de barrio") # título axis X 
+```
+```{r}
+crear_grafico_temp(x = tipo_barrio, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura adecuada en el hogar", # título del gráfico
+                    xtitle = "Tipo de barrio") # título axis X 
+```
+
+### Pobreza energética y tamaño del municipio 
+
+```{r}
+summary(pobgit2$TAMANO)
+
+# En primer lugar, modificamos el nombre de la variable para su clarificación y simplificamos las etiquetas de las categorías 
+
+pobgit2 <- rename (pobgit2, tamano_municipio = TAMANO)
+
+pobgit2$tamano_municipio <- fct_recode(pobgit2$tamano_municipio,  
+                    "<20.000h" = "Menos de 20.000 habitantes", 
+                    "20.000h-50.000h" = "Entre 20.000 y 50.000 habitantes", 
+                    "50.000h - 100.000h" = "Entre 50.000 y 100.000 habitantes", 
+                    ">100.000h" = "100.000 habitantes o más"
+                    )
+
+tabla_indicador(x = pobgit2$tamano_municipio, 
+                t = "Tamaño del municipio")
+
+```
+A partir de la definición de las categorías, analizamos los indicadores en función del tamaño del municipio: 
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="tamano_municipio", # variable independiente
+            title = "Temperatura adecuada en el hogar según el tamaño del municipio", # título de la tabla 
+            varname = "Tamaño del municipio", # Variable independiente
+            numcol = 4) # Número de valores de la variable independiente 
+```
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="tamano_municipio", # variable independiente
+            title = "Retrasos en el pago de gastos del hogar según el tamaño del municipio", # título de la tabla 
+            varname = "Tamaño del municipio", # Variable independiente
+            numcol = 4) # Número de valores de la variable independiente 
+```
+```{r}
+crear_grafico_temp(x = tamano_municipio, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura adecuada en el hogar", # título del gráfico
+                    xtitle = "Tamaño del municipio") # título axis X 
+```
+
+```{r}
+crear_grafico_ret (x = tamano_municipio, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en el pago de gastos del hogar", # título del gráfico
+                    xtitle = "Tamaño del municipio") # título axis X 
+```
+
+## Dimensión 4: Impactos sobre la salud, relaciones sociales y calidad de vida
+
+### Discriminación y pobreza energética 
+
+```{r}
+# Eliminamos el factor NS/NC para convertirlo en valores perdidos
+levels(pobgit2$P43)[levels(pobgit2$P43)=='NS/NC'] <- NA
+
+# Exploramos la variable sobre Sentimiento de discriminación 
+tabla_indicador(x = pobgit2$P43, 
+                t = "Sentimiento de discriminación")
+```
+Cruzamos la variable con los indicadores de pobreza energética
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="P43", # variable independiente
+            title = "Retrasos en el pago de gastos del hogar y sentimiento de discriminación", # título de la tabla 
+            varname = "Sentimiento de discriminación", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="P43", # variable independiente
+            title = "Temperatura adecuada en el hogar y sentimiento de discriminación", # título de la tabla 
+            varname = "Sentimiento de discriminación", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+```{r}
+crear_grafico_temp(x = P43, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura adecuada en el hogar", # título del gráfico
+                    xtitle = "Sentimiento de discriminación") # título axis X 
+```
+
+```{r}
+crear_grafico_ret (x = P43, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en el pago de gastos del hogar", # título del gráfico
+                    xtitle = "Sentimiento de discriminación") # título axis X 
+```
+
+### Afectación en la alimentación 
+
+Con el objetivo de analizar el impacto de la pobreza energética sobre aspectos vinculados a la salud, como es la alimentación, utilizaremos la variable `P51_2` incluída en la encuesta, que recoje las unidades familiares que no pueden acceder a una comida de carne, pollo o pescado al menos cada dos días. 
+
+Cruzamos la variable con los indicadores de pobreza energética: 
+
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="P51_2", # variable independiente
+            title = "Retrasos en el pago de gastos del hogar y afectación en la alimentación", # título de la tabla 
+            varname = "Afectación en la alimentación", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="P51_2", # variable independiente
+            title = "Temperatura adecuada en el hogar y afectación en la alimentación", # título de la tabla 
+            varname = "Afectación en la alimentación", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+
+```{r}
+crear_grafico_temp(x = P51_2, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura adecuada en el hogar", # título del gráfico
+                    xtitle = "Afectación en la alimentación") # título axis X 
+```
+
+```{r}
+crear_grafico_ret (x = P51_2, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en el pago de gastos del hogar", # título del gráfico
+                    xtitle = "Afectación en la alimentación") # título axis X 
+```
+
+### Dispositivos electrónicos en el hogar
+
+Por último, veremos como las unidades familiares en situación de pobreza energética responden ante las preguntas de la encuesta relativas al uso de dispositivos electrónicos, y como este hecho, como veremos, puede ser también un eje de desigualdad en la falta de acceso a determinados servicios energéticos y de telecomunicaciones. 
+
+Para ello, crearemos una variable sobre el acceso a dispoisitovs energéticos que incluya tres de los principales electrodomésticos y/o dispositivos electrónicos en el hogar: la lavadora (`P52_5`), la televisión (`P52_4`), el ordenador personal (`P52_6`) y el teléfono móvil (`P52_3`). 
+
+```{r}
+
+summary(pobgit2$P52_3)
+
+
+pobgit2 <- pobgit2 %>% mutate( dispositivos = case_when(
+  P52_3 == "No" ~ "No", 
+  P52_4 == "No" ~ "No",
+  P52_5 == "No" ~ "No",
+  P52_6 == "No" ~ "No",
+  TRUE ~ "Sí"
+))
+
+pobgit2$dispositivos <- as.factor(pobgit2$dispositivos)
+
+summary(pobgit2$dispositivos)
+
+```
+
+Cruzamos la variable con los indicadores de pobreza energética
+```{r}
+crear_tabla2(var1 ="retrasos", #variable dependiente
+            var2 ="dispositivos", # variable independiente
+            title = "Retrasos en el pago de gastos del hogar y acceso a dispositivos electrónicos", # título de la tabla 
+            varname = "Acceso a dispositivos electrónicos y/o electrodomésticos básicos", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+
+```{r}
+crear_tabla2(var1 ="temp_adecuada", #variable dependiente
+            var2 ="dispositivos", # variable independiente
+            title = "Temperatura adecuada en el hogar y acceso a dispositivos electrónicos ", # título de la tabla 
+            varname = "Acceso a dispositivos electrónicos y/o electrodomésticos básicos", # Variable independiente
+            numcol = 2) # Número de valores de la variable independiente 
+```
+
+```{r}
+crear_grafico_temp(x = dispositivos, #variable independiente
+                    y = temp_adecuada,  # variable dependiente 
+                    title = "Temperatura adecuada en el hogar", # título del gráfico
+                    xtitle = "Acceso a dispositivos electrónicos y/o electrodomésticos básicos") # título axis X 
+```
+
+```{r}
+crear_grafico_ret (x = dispositivos, #variable independiente
+                    y = retrasos,  # variable dependiente 
+                    title = "Retrasos en el pago de gastos del hogar", # título del gráfico
+                    xtitle = "Acceso a dispositivos electrónicos y/o electrodomésticos básicos") # título axis X 
+```
