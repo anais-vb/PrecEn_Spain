@@ -723,6 +723,20 @@ summary(foessa2$Vulnerabilidad_Energetica)
 plot(foessa2$Vulnerabilidad_Energetica, col = "#18a1cd", border = "#18a1cd")
 
 ```
+También crearemos una segunda variable de Pobreza Energética que actúe como variable dicotómica, a partir de los datos anteriores: 
+
+```{r}
+foessa2 <-  foessa2 %>% mutate ("Vulnerabilidad_dummy" = case_when(
+  Vulnerabilidad_num >0.1  ~ "Vulnerable", 
+  TRUE ~ "No vulnerable"
+))
+
+foessa2$Vulnerabilidad_dummy <- as.factor(foessa2$Vulnerabilidad_dummy)
+
+plot(foessa2$Vulnerabilidad_dummy, col = "#18a1cd", border = "#18a1cd")
+
+```
+
 
 # Caracterización de la población en situación de precariedad energética 
 
