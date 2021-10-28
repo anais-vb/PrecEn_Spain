@@ -1,0 +1,251 @@
+---
+title: "Anexo 3"
+subtitle: "Proceso de análisis - Árbol de decisión"
+output:
+  word_document: 
+    reference_docx: template_markdown.docx
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r include=FALSE}
+#install.packages(c("rpart", "caTools", "party", "partykit", "rpart.plot"))
+```
+
+
+```{r load-packages, include=FALSE}
+
+library(rpart)
+library (dplyr)
+library(caTools)
+library(party)
+library(partykit)
+library(rpart.plot)
+library(caret)
+library(tidyverse)
+library(knitr)
+
+```
+
+# Introducción a los árboles de decisión 
+En este anexo mostramos el proceso de análisis realizado utilizando la técnica de machine learning de 'Árbol de Decisión'. Mediante esta técnica, se divide la población o muestra en conjuntos homegéneos basados en la variable de entrada más significativa.
+La construcción del árbol sigue un enfoque de división binaria recursiva (top-down greddy approach), que implica analizar la mejor variable para ramificación sólo en el proceso de división actual.
+
+En nuestro caso, utilizaremos un árbol de clasificación, en tanto nuestra variable dependiente será categórica. A diferencia de los árboles de regresión, el valor en el nodo terminal se reduce a la moda de las observaciones del conjunto de entrenamiento que han “caído” en esa región.
+
+# Selección de datos de análisis 
+Seleccionamos las variables que incluíremos en nuestra base de datos. 
+Por un lado, eliminaremos las variables numéricas, en tanto utilizaremos el árbol de decisión como método de clasificación y análisis. Por otro lado, las variables numéricas que nos interesen, las recodificaremos como categóricas. 
+
+Eliminaremos aquellas variables que añaden ruido innecesario, así como las que resulten redundantes con la variable dependiente.  
+
+```{r include=FALSE}
+#Cargamos los datos que utilizaremos 
+foessa2 <- readRDS(file = "foessa2.rds")
+
+```
+
+```{r}
+# Edad por franjas 
+
+foessa2 <- mutate(foessa2, edad_franjas = case_when(
+  edad <= 17 ~ "0-17 años", 
+  edad >= 18 & edad <= 25 ~ "18-25 años", 
+  edad >= 26 & edad <= 35 ~ "26-35 años", 
+  edad >= 36 & edad <= 50 ~ "36-50 años", 
+  edad >= 51 & edad <= 64 ~ "51-64 años", 
+  edad >= 65 ~ "Más de 65 años"
+))
+
+foessa2$edad_franjas <- as.factor(foessa2$edad_franjas)
+
+
+# Eliminamos las variables que no nos interesan (103 iniciales)
+
+foessat <- foessa2 %>% select(-c(CCAA, 
+                              PROVINCIA, 
+                              edad, 
+                              tamano_hogar, 
+                              ingresos_UC, 
+                              ingresos_hogar, 
+                              gasto_energia, 
+                              gasto_agua, 
+                              rehab_cocina, 
+                              rehab_baño, 
+                              rehab_instal, 
+                              rehab_calef, 
+                              rehab_ventana, 
+                              rehab_tabiques,
+                              rehab_suelo,
+                              rehab_barreras, 
+                              ingresos_calidad, 
+                              gasto_energia_num, 
+                              share_energy,
+                              TWO_M_Sí,
+                              HEP_Sí,
+                              temp_adecuada_No_w,
+                              retrasos1_Sí_w,
+                              TWO_M_Sí_w,
+                              HEP_Sí_w, 
+                              Vulnerabilidad_num,
+                              retrasos1_Sí, 
+                              temp_adecuada_r, 
+                              temp_adecuada_No, 
+                              TWO_M, 
+                              HEP, 
+                              retrasos, 
+                              temp_adecuada, 
+                              retrasos1, 
+                              Vulnerabilidad_Energetica,
+                              PE, 
+                              dinero_gastoscasa, 
+                              avisos_cortes
+                              )) %>% na.omit()
+
+# Eliminamos las etiquetas de las variables
+
+# install.packages("sjlabelled")
+library(sjlabelled)
+
+foessat <- remove_all_labels(foessat)
+
+str(foessat) # Hemos perdido observaciones al descartar los valores perdidos. La BD final tendrà 24,651 observaciones y 66 variables 
+
+```
+
+
+Primero, dividimos nuestros datos en dos partes como datos de test i entrenamiento: 
+
+
+```{r}
+set.seed(123)
+sample_data = sample.split(foessat, SplitRatio = 0.75)
+train_data <- subset(foessat, sample_data == TRUE)
+test_data <- subset(foessat, sample_data == FALSE)
+```
+
+
+# Construcción del arbol de decisión 
+
+A partir de aquí, podemos crear nuestro primer árbol de decision con el paquete `rpart`: 
+
+```{r}
+
+# Creamos el arbol de decisión 
+
+rtree <- rpart(Vulnerabilidad_dummy ~ ., 
+               data = train_data, 
+               method = "class", 
+               control = rpart.control(cp = 0, 
+                                       maxdepth = 8, 
+                                       minsplit = 100))
+
+
+arbol1 <- rpart.plot(rtree, 
+                     extra = 106)
+
+```
+
+Estudiamos la evolución del error a medida que el árbol va creciendo
+
+```{r}
+summary(rtree) # estadísticas detalladas de cada nodo
+
+printcp(rtree) # estadísticas de resultados
+
+plotcp(rtree) # evolución del error a medida que se incrementan los nodos
+```
+
+
+Validamos la capacidad de predicción del árbol con el fichero de validación
+
+```{r}
+
+testPredRpart <- predict(rtree, newdata = test_data, type = "class")
+
+# Visualizamos una matriz de confusión
+table(testPredRpart, test_data$Vulnerabilidad_dummy)
+```
+
+A partir de la matruiz de confusión, podemos calcular una medida de rendimiento del modelo. Calculamos el % de aciertos de nuestro modelo, utilizando los datos de test: 
+
+```{r}
+
+sum(testPredRpart == test_data$Vulnerabilidad_dummy)/ length(test_data$Vulnerabilidad_dummy)*100
+
+```
+
+El resultado nos clasifica correctamente un 71,77% de los registros, por lo que es bastante mejorable. Procederemos a realizar 'prunning' para mejorar nuestros resultados
+
+
+```{r}
+# Prune the hr_base_model based on the optimal cp value (POSTPRUNING)
+tree_pruned <- prune(rtree, cp = 0.0046 )
+
+# Compute the accuracy of the pruned tree
+testPredRpart <- predict(tree_pruned, newdata = test_data, type = "class")
+
+#Accuracy
+sum(testPredRpart == test_data$Vulnerabilidad_dummy)/ length(test_data$Vulnerabilidad_dummy)*100
+
+rpart.plot(tree_pruned)
+```
+
+## Recursos
+https://bookdown.org/content/2031/arboles-de-decision-parte-ii.html 
+https://rpubs.com/Cristina_Gil/arboles_ensemble
+https://rstudio-pubs-static.s3.amazonaws.com/237547_0171c04b6d2e4550aea58853c056d29d.html
+https://www.datanalytics.com/libro_r/arboles-de-decision.html
+
+
+# Random Forest 
+
+Cargamos el paquete que utilizaremos 
+```{r}
+library(randomForest)
+```
+
+Utilizaremos los datos de training y test que hemos creado anteriormente: 
+
+```{r}
+set.seed(123)
+dim(foessat)
+
+train = sample(1:nrow(foessat), 14790)
+
+
+```
+
+Usaremos la variable Vulnerabilidad. Se usará 500 árboles.
+
+```{r}
+random1 = randomForest(Vulnerabilidad_dummy ~ . , data = foessat , subset = train)
+
+random1
+
+```
+
+```{r}
+#Plotting the Error vs Number of Trees Graph.
+plot(random1)
+```
+
+Este gráfico muestra el error vs. el número de árboles. Se puede ver como el error disminuye a medida que se incrementa el número de árboles. 
+
+```{r}
+random1$importance
+```
+
+
+
+## Recurso 
+https://bookdown.org/content/2031/ensambladores-random-forest-parte-i.html
+
+
