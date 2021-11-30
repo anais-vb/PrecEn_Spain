@@ -29,6 +29,7 @@ library(party)
 library(partykit)
 library(rpart.plot)
 library(caret)
+library(randomForest)
 library(tidyverse)
 library(knitr)
 
@@ -207,10 +208,7 @@ https://www.datanalytics.com/libro_r/arboles-de-decision.html
 
 # Random Forest 
 
-Cargamos el paquete que utilizaremos 
-```{r}
-library(randomForest)
-```
+En principio, no necesitamos partir los datos ya que el proceso de Random Forest ya incluye procesos de partición internos. Aún así, crearemos una partición propia previa. 
 
 Utilizaremos los datos de training y test que hemos creado anteriormente: 
 
@@ -247,5 +245,7 @@ random1$importance
 
 ## Recurso 
 https://bookdown.org/content/2031/ensambladores-random-forest-parte-i.html
+
+https://www.youtube.com/watch?v=HJB6XFkmezM 
 
 

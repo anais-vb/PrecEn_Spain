@@ -1,0 +1,11 @@
+INFO [2021-11-24 20:50:55] [[1]]
+INFO [2021-11-24 20:50:55] d
+INFO [2021-11-24 20:50:55] 
+INFO [2021-11-24 20:50:55] $fill
+INFO [2021-11-24 20:50:55] c("orange", "blue", "red", "green")
+INFO [2021-11-24 20:50:55] 
+INFO [2021-11-24 20:50:55] $filename
+INFO [2021-11-24 20:50:55] NULL
+INFO [2021-11-24 20:50:55] 
+ERROR [2021-11-24 20:50:56] NAs in dataset
+ERROR [2021-11-24 20:50:56] Invalid size of input object
